@@ -129,6 +129,28 @@ public class HerbloreAppTest {
     }
 
     @Test
+    public void prescriptionGogglesSavingCaviarMakeMoreMixes() {
+        bank(items(ItemID.BRUT_CAVIAR, 9));
+
+        app.applySettings(HerbloreSettings.DEFAULT.withPrescriptionGogglesUsed(true));
+
+        // r95 energy mix, 23xp a run, and 9 caviar now run 10 times
+        assertEquals(230.0, app.getResult().getTotalXp(), DELTA);
+    }
+
+    @Test
+    public void prescriptionGogglesSavingASecondaryLeaveXpAlone() {
+        // torstol's default route ends at r60 zamorak brew, which saves the jangerberries
+        final HerbloreResult before = bank(items(ItemID.TORSTOL, 10));
+
+        app.applySettings(HerbloreSettings.DEFAULT.withPrescriptionGogglesUsed(true));
+        final ChainResult after = app.getResult().getChainResults().get(0);
+
+        assertEquals(before.getTotalXp(), app.getResult().getTotalXp(), DELTA);
+        assertEquals(9.0, after.getSecondaryDemand().get(ItemID.JANGERBERRIES), DELTA);
+    }
+
+    @Test
     public void aSeedYieldOnlyChangesItsOwnHerb() {
         bank(items(ItemID.AVANTOE_SEED, 1));
         final double before = app.getResult().getTotalXp();

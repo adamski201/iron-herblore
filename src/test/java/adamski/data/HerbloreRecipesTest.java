@@ -2,6 +2,7 @@ package adamski.data;
 
 import adamski.domain.route.RecipeGraph;
 import adamski.domain.Recipe;
+import adamski.domain.result.RecipeModifiers;
 import net.runelite.api.gameval.ItemID;
 import org.junit.Test;
 
@@ -12,6 +13,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -119,7 +121,23 @@ public class HerbloreRecipesTest {
      */
     @Test
     public void everyRouteToAProductIsWorthTheSameXp() {
-        final RecipeGraph graph = new RecipeGraph(Recipes.all());
+        assertEveryRouteToAProductIsWorthTheSameXp(Recipes.all());
+    }
+
+    /**
+     * The goggles save torstol on one route to super combat and the unf vial on the other, so both
+     * gain alike. Saving on only one would make the longer route worth more.
+     */
+    @Test
+    public void everyRouteToAProductIsWorthTheSameXpWithPrescriptionGoggles() {
+        assertEveryRouteToAProductIsWorthTheSameXp(Recipes.all().stream()
+                .map(RecipeModifiers.ingredientSavings(PrescriptionGoggles.savedItemsByRecipeId(),
+                        PrescriptionGoggles.SAVE_CHANCE))
+                .collect(Collectors.toList()));
+    }
+
+    private static void assertEveryRouteToAProductIsWorthTheSameXp(List<Recipe> recipes) {
+        final RecipeGraph graph = new RecipeGraph(recipes);
 
         for (int from : everyItemInTheTable()) {
             final Map<Integer, Map<List<Integer>, Double>> xpByRouteByProduct = new LinkedHashMap<>();

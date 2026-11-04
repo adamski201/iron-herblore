@@ -76,6 +76,18 @@ public interface HerbloreConfig extends net.runelite.client.config.Config
     }
 
     @ConfigItem(
+        keyName = "usePrescriptionGoggles",
+        name = "Use prescription goggles",
+        description = "Assume prescription goggles are always worn: a 10% chance to"
+            + " save the secondary where applicable (inc. torstol in the case of SCB and caviar for barbarian mixes).",
+        position = 4
+    )
+    default boolean usePrescriptionGoggles()
+    {
+        return false;
+    }
+
+    @ConfigItem(
         keyName = "guamSeedYield",
         name = "Guam",
         description = "How many herbs each guam seed grows into",

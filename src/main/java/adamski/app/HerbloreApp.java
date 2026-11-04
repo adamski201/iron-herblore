@@ -5,10 +5,12 @@ import adamski.domain.route.RecipeSelection;
 import adamski.domain.route.RecipeGraph;
 import adamski.domain.route.RecipeSelector;
 import adamski.domain.result.ChainResultCalculator;
-import adamski.domain.result.YieldOverrides;
+import adamski.domain.result.RecipeModifiers;
+import adamski.data.PrescriptionGoggles;
 import adamski.data.Recipes;
 import adamski.domain.ItemQuantities;
 import adamski.domain.ItemSource;
+import adamski.domain.Recipe;
 import adamski.domain.SecondaryPrecursor;
 import adamski.domain.balance.SecondaryBalanceCalculator;
 import lombok.Getter;
@@ -16,12 +18,14 @@ import lombok.extern.slf4j.Slf4j;
 
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.UnaryOperator;
 
 /**
  * Orchestrator - receives changes from the adapter, updates state via the store, runs the
@@ -145,13 +149,13 @@ public class HerbloreApp {
         final var ownedItems = mergeSources(store.itemsBySource());
 
         // Determine which recipe chains will be used (based on product selection)
-        final var routedChains = chainResolver.resolve(ownedItems, store.selection());
+        final var recipeChains = chainResolver.resolve(ownedItems, store.selection());
 
-        // Override recipe yields with those configured by player's settings
-        final var recipeChains = YieldOverrides.apply(routedChains, getRecipeYieldOverrides(settings));
+        // Apply modifiers to the selected recipes depending on the player's settings
+        final var modifiedChains = RecipeModifiers.apply(recipeChains, getRecipeModifiers(settings));
 
         // Calculate the XP & quantity result for each chain
-        final var chainResults = ChainResultCalculator.calculate(recipeChains, ownedItems);
+        final var chainResults = ChainResultCalculator.calculate(modifiedChains, ownedItems);
 
         // Calculate the total surplus/deficit of secondaries
         final var secondaryBalance = SecondaryBalanceCalculator.calculate(
@@ -161,6 +165,19 @@ public class HerbloreApp {
                 settings.isPrecursorsCounted() ? precursors : List.of());
 
         return new HerbloreResult(ownedItems, store.currentXp(), chainResults, secondaryBalance);
+    }
+
+    /** The modifiers the settings call for, in the order they run. */
+    private static List<UnaryOperator<Recipe>> getRecipeModifiers(HerbloreSettings settings) {
+        final List<UnaryOperator<Recipe>> modifiers = new ArrayList<>();
+        modifiers.add(RecipeModifiers.yieldOverrides(getRecipeYieldOverrides(settings)));
+
+        if (settings.isPrescriptionGogglesUsed()) {
+            modifiers.add(RecipeModifiers.ingredientSavings(
+                    PrescriptionGoggles.savedItemsByRecipeId(), PrescriptionGoggles.SAVE_CHANCE));
+        }
+
+        return modifiers;
     }
 
     private static Map<Integer, Double> getRecipeYieldOverrides(HerbloreSettings settings) {
