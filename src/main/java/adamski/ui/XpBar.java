@@ -10,21 +10,23 @@ import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.geom.Rectangle2D;
 
 /**
- * The banked level above a full-width line showing how far through it towards the next the bank
- * reaches, in bright blue. A track in muted blue means the bank gains at least one whole level;
- * a grey track means it gains none, and the part of the level already held shows in muted blue
- * before the bank's share. Under it, the current level on the left - where you start - the banked
- * xp in the middle, and on the right the level the fill is heading for. EDT only.
+ * The level now and the level once the bank is made ("85 ▸ 92", centred on the arrow, which is
+ * drawn rather than typed since the RuneScape font has no good one; just "85" when the bank gains
+ * none) above a full-width line showing how far through the banked level towards the
+ * next the bank reaches, in bright blue. When the bank gains no level, the part of the level
+ * already held shows in muted blue before the bank's share. Under it, the banked level on the
+ * left and the next level on the right - the two ends of the line - with the banked xp between
+ * them. EDT only.
  */
 final class XpBar extends JComponent {
     private static final Color TRACK = ColorScheme.LIGHT_GRAY_COLOR;
     private static final Color FILL = new Color(0x3A, 0x8E, 0xE6);
 
     /**
-     * Xp already covered without this level's fill: the whole track once the bank gains a level,
-     * or what the player already has of the level when it does not.
+     * What the player already has of the level, when the bank gains no level.
      */
     private static final Color COVERED = new Color(0x3A, 0x58, 0x7A);
     private static final Color LEVEL_TEXT = ColorScheme.LIGHT_GRAY_COLOR;
@@ -36,6 +38,11 @@ final class XpBar extends JComponent {
      * Space between the line and the text either side of it.
      */
     private static final int TEXT_GAP = 6;
+
+    /**
+     * Space either side of the title's arrow.
+     */
+    private static final int ARROW_GAP = 5;
 
     private XpBarView view;
 
@@ -63,19 +70,17 @@ final class XpBar extends JComponent {
 
             final int width = getWidth();
 
-            // the banked level
+            // where you are and where the bank takes you
             g.setFont(FontManager.getRunescapeFont());
             final FontMetrics above = g.getFontMetrics();
-            final String level = "Level " + view.getBankedLevel();
-            g.setColor(XP_TEXT);
-            g.drawString(level, (width - above.stringWidth(level)) / 2, above.getAscent());
+            paintTitle(g, above, width);
 
             final int lineTop = heightOf(above) + TEXT_GAP;
-            // a gained level turns the whole track blue; otherwise what is already held of the level
-            // shows in the muted blue, with the bank's share in bright blue after it
+            // what is already held of the level shows in the muted blue, with the bank's share in
+            // bright blue after it; once a level is gained nothing is held of it, so it is all bank
             final int start = (int) Math.round(width * view.getStartProgress());
             final int end = (int) Math.round(width * view.getProgress());
-            g.setColor(view.levelGained() ? COVERED : TRACK);
+            g.setColor(TRACK);
             g.fillRect(0, lineTop, width, LINE_THICKNESS);
             g.setColor(COVERED);
             g.fillRect(0, lineTop, start, LINE_THICKNESS);
@@ -86,13 +91,13 @@ final class XpBar extends JComponent {
             final FontMetrics metrics = g.getFontMetrics();
             final int baseline = lineTop + LINE_THICKNESS + TEXT_GAP + metrics.getAscent();
 
-            final String current = String.valueOf(view.getCurrentLevel());
+            final String banked = String.valueOf(view.getBankedLevel());
             final String next = String.valueOf(view.getNextLevel());
             final String xp = xpText(view.getBankedXp());
 
-            // where you start on the left; on the right, the level the fill is heading for
+            // the two ends of the line: the banked level, and the level the fill is heading for
             g.setColor(LEVEL_TEXT);
-            g.drawString(current, 0, baseline);
+            g.drawString(banked, 0, baseline);
             g.drawString(next, width - metrics.stringWidth(next), baseline);
 
             g.setColor(XP_TEXT);
@@ -104,6 +109,47 @@ final class XpBar extends JComponent {
 
     private static int heightOf(FontMetrics metrics) {
         return metrics.getAscent() + metrics.getDescent();
+    }
+
+    /**
+     * "85 ▸ 92" along the top with the arrow in the middle, so a three-digit level does not push
+     * it off centre, or "85" alone when the bank gains no level.
+     */
+    private void paintTitle(Graphics2D g, FontMetrics metrics, int width) {
+        final String from = String.valueOf(view.getCurrentLevel());
+        final int baseline = metrics.getAscent();
+        g.setColor(XP_TEXT);
+
+        if (!view.levelGained()) {
+            g.drawString(from, (width - metrics.stringWidth(from)) / 2, baseline);
+            return;
+        }
+
+        final String to = String.valueOf(view.getBankedLevel());
+
+        // sized and centred on the digits either side of it
+        final Rectangle2D digit = g.getFont().createGlyphVector(g.getFontRenderContext(), "0").getVisualBounds();
+        final int halfHeight = Math.max(2, (int) Math.round(digit.getHeight() * 0.3));
+        final int arrowWidth = halfHeight + 1;
+        final int arrowMiddle = baseline + (int) Math.round(digit.getY() + digit.getHeight() / 2);
+
+        final int arrowLeft = (width - arrowWidth) / 2;
+        g.drawString(from, arrowLeft - ARROW_GAP - metrics.stringWidth(from), baseline);
+        g.drawString(to, arrowLeft + arrowWidth + ARROW_GAP, baseline);
+
+        g.setColor(LEVEL_TEXT);
+        paintArrow(g, arrowLeft, arrowMiddle, halfHeight);
+    }
+
+    /**
+     * A solid triangle pointing right, built from one-pixel columns so it stays as crisp as the
+     * pixel font around it: its left edge at {@code left}, 2 x {@code halfHeight} + 1 tall.
+     */
+    private static void paintArrow(Graphics2D g, int left, int middle, int halfHeight) {
+        for (int column = 0; column <= halfHeight; column++) {
+            final int reach = halfHeight - column;
+            g.fillRect(left + column, middle - reach, 1, 2 * reach + 1);
+        }
     }
 
     /**
