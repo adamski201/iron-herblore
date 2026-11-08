@@ -18,23 +18,47 @@ public class SelectionPersistenceTest {
     public void aSelectionSurvivesBeingSaved() {
         final RecipeSelection chosen = RecipeSelection.of(Map.of(249, 20, 199, RecipeSelection.STOP));
 
-        assertEquals(chosen, persistence.decode(persistence.encode(chosen)));
+        assertEquals(chosen, persistence.decodeStoredRecipeSelection(persistence.encode(chosen)));
     }
 
     @Test
     public void nothingSavedIsTheDefaults() {
-        assertEquals(RecipeSelection.ALL_DEFAULT, persistence.decode(null));
-        assertEquals(RecipeSelection.ALL_DEFAULT, persistence.decode(""));
+        assertEquals(RecipeSelection.ALL_DEFAULT, persistence.decodeStoredRecipeSelection(null));
+        assertEquals(RecipeSelection.ALL_DEFAULT, persistence.decodeStoredRecipeSelection(""));
     }
 
     @Test
     public void anUnreadableSaveIsTheDefaults() {
-        assertEquals(RecipeSelection.ALL_DEFAULT, persistence.decode("{not json"));
-        assertEquals(RecipeSelection.ALL_DEFAULT, persistence.decode("[1, 2, 3]"));
+        assertEquals(RecipeSelection.ALL_DEFAULT, persistence.decodeStoredRecipeSelection("{not json"));
+        assertEquals(RecipeSelection.ALL_DEFAULT, persistence.decodeStoredRecipeSelection("[1, 2, 3]"));
     }
 
     @Test
     public void anEntryWithNoRecipeIsDropped() {
-        assertEquals(RecipeSelection.of(Map.of(199, 20)), persistence.decode("{\"249\": null, \"199\": 20}"));
+        assertEquals(RecipeSelection.of(Map.of(199, 20)), persistence.decodeStoredRecipeSelection("{\"249\": null, \"199\": 20}"));
+    }
+
+    @Test
+    public void amuletChoicesSurviveBeingSaved() {
+        final Map<Integer, Integer> chosen = Map.of(44, 3, 87, 1);
+
+        assertEquals(chosen, persistence.decodeStoredAmuletConfiguration(persistence.encodeAmulet(chosen)));
+    }
+
+    @Test
+    public void noAmuletChoicesSavedIsNone() {
+        assertEquals(Map.of(), persistence.decodeStoredAmuletConfiguration(null));
+        assertEquals(Map.of(), persistence.decodeStoredAmuletConfiguration(""));
+    }
+
+    @Test
+    public void unreadableAmuletChoicesAreNone() {
+        assertEquals(Map.of(), persistence.decodeStoredAmuletConfiguration("{not json"));
+        assertEquals(Map.of(), persistence.decodeStoredAmuletConfiguration("[1, 2, 3]"));
+    }
+
+    @Test
+    public void anAmuletChoiceWithNoSizeIsDropped() {
+        assertEquals(Map.of(87, 2), persistence.decodeStoredAmuletConfiguration("{\"44\": null, \"87\": 2}"));
     }
 }

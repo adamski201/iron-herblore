@@ -14,6 +14,8 @@ import java.util.Set;
 import java.util.function.UnaryOperator;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertSame;
 
 public class RecipeModifiersTest {
@@ -45,39 +47,39 @@ public class RecipeModifiersTest {
         final RecipeChain stopped = new RecipeChain(5, Collections.emptyList());
 
         final List<RecipeChain> applied = RecipeModifiers.apply(List.of(stopped),
-                List.of(RecipeModifiers.yieldOverrides(Map.of(10, 0.85))));
+                List.of(RecipeModifiers.outputOverrides(Map.of(10, 0.85))));
 
         assertEquals(5, applied.get(0).getRootItemId());
     }
 
-    // --- yield overrides ---------------------------------------------
+    // --- output overrides --------------------------------------------
 
     @Test
-    public void aYieldReplacesItsRecipesOutput() {
-        final Recipe yielded = RecipeModifiers.yieldOverrides(Map.of(10, 0.85)).apply(MIX);
+    public void anOverrideReplacesItsRecipesOutput() {
+        final Recipe overridden = RecipeModifiers.outputOverrides(Map.of(10, 0.85)).apply(MIX);
 
-        assertEquals(0.85, yielded.getOutput().getQuantity(), DELTA);
-        assertEquals(OUTPUT, yielded.getOutput().getItemId());
+        assertEquals(0.85, overridden.getOutput().getQuantity(), DELTA);
+        assertEquals(OUTPUT, overridden.getOutput().getItemId());
     }
 
     @Test
-    public void aRecipeWithNoYieldIsLeftAlone() {
-        assertSame(MIX, RecipeModifiers.yieldOverrides(Map.of(99, 0.85)).apply(MIX));
+    public void aRecipeWithNoOverrideIsLeftAlone() {
+        assertSame(MIX, RecipeModifiers.outputOverrides(Map.of(99, 0.85)).apply(MIX));
     }
 
     @Test
-    public void aYieldScalesTheOutputButNotTheXp() {
-        final ChainResult result = calculate(RecipeModifiers.yieldOverrides(Map.of(10, 0.25)), 10);
+    public void anOverrideChangesTheOutputButNotTheXp() {
+        final ChainResult result = calculate(RecipeModifiers.outputOverrides(Map.of(10, 0.25)), 10);
 
         assertEquals(2.5, result.getOutputQuantity(), DELTA);
         assertEquals(100.0, result.getXp(), DELTA); // the attempts still run
     }
 
-    // --- ingredient savings ------------------------------------------
+    // --- input scaling ----------------------------------------------
 
     @Test
-    public void savingThePrimaryMakesMoreFromWhatIsBanked() {
-        final ChainResult result = calculate(RecipeModifiers.ingredientSavings(Map.of(10, Set.of(PRIMARY)), 0.1), 9);
+    public void scalingThePrimaryDownMakesMoreFromWhatIsBanked() {
+        final ChainResult result = calculate(RecipeModifiers.inputScaling(Map.of(10, Set.of(PRIMARY)), 0.9), 9);
 
         assertEquals(10.0, result.getOutputQuantity(), DELTA); // 9 / 0.9 runs
         assertEquals(100.0, result.getXp(), DELTA);
@@ -85,8 +87,8 @@ public class RecipeModifiersTest {
     }
 
     @Test
-    public void savingASecondaryLowersDemandButNotXp() {
-        final ChainResult result = calculate(RecipeModifiers.ingredientSavings(Map.of(10, Set.of(SECONDARY)), 0.1), 10);
+    public void scalingASecondaryChangesDemandButNotXp() {
+        final ChainResult result = calculate(RecipeModifiers.inputScaling(Map.of(10, Set.of(SECONDARY)), 0.9), 10);
 
         assertEquals(10.0, result.getOutputQuantity(), DELTA);
         assertEquals(100.0, result.getXp(), DELTA);
@@ -94,13 +96,46 @@ public class RecipeModifiersTest {
     }
 
     @Test
-    public void aRecipeWithNothingSavedIsLeftAlone() {
-        assertSame(MIX, RecipeModifiers.ingredientSavings(Map.of(99, Set.of(PRIMARY)), 0.1).apply(MIX));
+    public void aRecipeWithNothingListedIsLeftAlone() {
+        assertSame(MIX, RecipeModifiers.inputScaling(Map.of(99, Set.of(PRIMARY)), 0.9).apply(MIX));
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void savingAnItemTheRecipeDoesNotUseIsAnError() {
-        RecipeModifiers.ingredientSavings(Map.of(10, Set.of(OUTPUT)), 0.1).apply(MIX);
+    public void scalingAnItemTheRecipeDoesNotUseIsAnError() {
+        RecipeModifiers.inputScaling(Map.of(10, Set.of(OUTPUT)), 0.9).apply(MIX);
+    }
+
+    // --- output scaling ---------------------------------------------
+
+    @Test
+    public void outputScalingMultipliesWhatARunMakesButUsesNothingMore() {
+        final ChainResult result = calculate(RecipeModifiers.outputScaling(Map.of(10, 1.15)), 10);
+
+        assertEquals(11.5, result.getOutputQuantity(), DELTA);
+        assertEquals(100.0, result.getXp(), DELTA); // no extra xp for the extra dose
+        assertEquals(20.0, result.getSecondaryDemand().get(SECONDARY), DELTA);
+    }
+
+    @Test
+    public void outputScalingScalesAnOverrideRatherThanReplacingIt() {
+        assertEquals(0.5 * 1.15, outputOf(List.of(
+                RecipeModifiers.outputOverrides(Map.of(10, 0.5)),
+                RecipeModifiers.outputScaling(Map.of(10, 1.15)))), DELTA);
+    }
+
+    @Test
+    public void aRecipeWithNoFactorIsLeftAlone() {
+        assertSame(MIX, RecipeModifiers.outputScaling(Map.of(99, 1.15)).apply(MIX));
+    }
+
+    // --- runs ---------------------------------------------------------
+
+    @Test
+    public void aChainSaysWhetherItRunsARecipe() {
+        final ChainResult result = calculate(UnaryOperator.identity(), 10);
+
+        assertTrue(result.runsAnyOf(Set.of(10, 99)));
+        assertFalse(result.runsAnyOf(Set.of(99)));
     }
 
     private static double outputOf(List<UnaryOperator<Recipe>> modifiers) {

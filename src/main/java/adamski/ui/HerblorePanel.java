@@ -67,6 +67,7 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
     private final XpBar xpBar = new XpBar();
     private final JPanel rows = new JPanel(new DynamicGridLayout(0, 1, 0, 3));
     private final JPanel secondaries = new JPanel(new DynamicGridLayout(0, 1, 0, 1));
+    private final JPanel amulet = new JPanel(new BorderLayout(0, 2));
 
     /**
      * Which rows are open, by root item, so they stay open when the rows are rebuilt. EDT only.
@@ -77,6 +78,12 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
      * Which secondaries are open, by item, for the same reason. EDT only.
      */
     private final Set<Integer> expandedSecondaryItemIds = new HashSet<>();
+
+    /**
+     * Whether the amulet section shows its choices. Kept here because the section is rebuilt for
+     * every result; closed to start with, since the choices are set once and rarely changed.
+     */
+    private boolean amuletExpanded;
 
     /**
      * Where each row sits, kept between results. EDT only.
@@ -175,14 +182,21 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
         recipesHeading = recipesHeading();
 
         rows.setOpaque(false);
+        amulet.setOpaque(false);
+        amulet.setBorder(new EmptyBorder(10, 0, 0, 0));
         secondaries.setOpaque(false);
         secondaries.setBorder(new EmptyBorder(10, 0, 0, 0));
+
+        final JPanel below = new JPanel(new BorderLayout());
+        below.setOpaque(false);
+        below.add(amulet, BorderLayout.NORTH);
+        below.add(secondaries, BorderLayout.CENTER);
 
         final JPanel content = new JPanel(new BorderLayout());
         content.setOpaque(false);
         content.add(header, BorderLayout.NORTH);
         content.add(rows, BorderLayout.CENTER);
-        content.add(secondaries, BorderLayout.SOUTH);
+        content.add(below, BorderLayout.SOUTH);
 
         add(content, BorderLayout.NORTH);
     }
@@ -246,14 +260,16 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
         // Rows worth nothing stay listed - a row stopped at an unf vial still needs its picker.
         // Kept in the domain's order here; RowOrder decides where they sit.
         final List<RowView> rowViews = result.getChainResults().stream()
-                .map(rowViewFactory::rowOf)
+                .map(chain -> rowViewFactory.rowOf(chain,
+                        result.getAmuletChainRootItemIds().contains(chain.getRootItemId())))
                 .collect(Collectors.toList());
 
         final List<SecondaryView> secondaryViews = rowViewFactory.secondariesOf(result.getSecondaryBalance());
+        final AmuletView amuletView = rowViewFactory.amuletOf(result.getAmuletOptions(), result.getAmuletCharges());
         final Integer pickedOnRootItemId = pickingOnRootItemId;
 
         SwingUtilities.invokeLater(() -> {
-            final Runnable render = () -> render(xpBarView, rowViews, pickedOnRootItemId, secondaryViews);
+            final Runnable render = () -> render(xpBarView, rowViews, pickedOnRootItemId, secondaryViews, amuletView);
 
             if (active) {
                 render.run();
@@ -279,7 +295,7 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
     }
 
     private void render(XpBarView xpBarView, List<RowView> rowViews, Integer pickedOnRootItemId,
-                        List<SecondaryView> secondaryViews) {
+                        List<SecondaryView> secondaryViews, AmuletView amuletView) {
         noData.setVisible(false);
         xpBar.setVisible(true);
         xpBar.setView(xpBarView);
@@ -293,6 +309,15 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
                 rowViews.stream().map(RowView::getRootItemId).collect(Collectors.toList()),
                 pickedOnRootItemId);
         drawRows(rowByRootItemId);
+
+        // only the potions the bank makes are offered, so with none there is nothing to choose
+        amulet.removeAll();
+        if (!amuletView.getLines().isEmpty()) {
+            final AmuletPanel choices = new AmuletPanel(amuletView, this::setAmuletDoses, this::clearAmuletDoses);
+            choices.setVisible(amuletExpanded);
+            amulet.add(amuletHeadingOf(amuletView, choices), BorderLayout.NORTH);
+            amulet.add(choices, BorderLayout.CENTER);
+        }
 
         secondaries.removeAll();
         if (!secondaryViews.isEmpty()) {
@@ -325,6 +350,62 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
                 pickingOnRootItemId = null;
             }
         });
+    }
+
+    /**
+     * Called on the EDT by the amulet section. Like a pick, it goes through the client thread and
+     * comes back as a result.
+     */
+    private void setAmuletDoses(int recipeId, int dosesPerPotion) {
+        clientThread.invoke(() -> app.setAmuletDoses(recipeId, dosesPerPotion));
+    }
+
+    private void clearAmuletDoses(int recipeId) {
+        clientThread.invoke(() -> app.clearAmuletDoses(recipeId));
+    }
+
+    /**
+     * "Alchemist's amulet", with the charges the choices use on the right - shown open or closed, so
+     * what the amulet costs is visible either way. Clicking it shows or hides the choices.
+     */
+    private JPanel amuletHeadingOf(AmuletView amuletView, AmuletPanel choices) {
+        final JLabel charges = new JLabel(Math.round(amuletView.getCharges()) == 0
+                ? ""
+                : Amounts.abbreviate(Math.ceil(amuletView.getCharges())) + " charges");
+        charges.setFont(FontManager.getRunescapeSmallFont());
+        charges.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+        charges.setToolTipText("One charge per extra dose the amulet makes, on average");
+
+        // the default font, since the RuneScape ones may lack the arrows
+        final JLabel arrow = new JLabel(arrowOf(amuletExpanded));
+        arrow.setForeground(Color.WHITE);
+
+        // on the right, so the title lines up with the other headings
+        final JPanel right = new JPanel(new BorderLayout(6, 0));
+        right.setOpaque(false);
+        right.add(charges, BorderLayout.CENTER);
+        right.add(arrow, BorderLayout.EAST);
+
+        final JPanel heading = new JPanel(new BorderLayout());
+        heading.setOpaque(false);
+        heading.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        heading.add(heading("Alchemist's amulet"), BorderLayout.WEST);
+        heading.add(right, BorderLayout.EAST);
+        heading.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                amuletExpanded = !amuletExpanded;
+                choices.setVisible(amuletExpanded);
+                arrow.setText(arrowOf(amuletExpanded));
+                amulet.revalidate();
+                amulet.repaint();
+            }
+        });
+        return heading;
+    }
+
+    private static String arrowOf(boolean expanded) {
+        return expanded ? "▾" : "▸";
     }
 
     /**

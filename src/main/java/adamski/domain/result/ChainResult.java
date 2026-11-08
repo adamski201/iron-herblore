@@ -5,7 +5,9 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * The final XP & output quantity produced by a chain of recipes.
@@ -34,6 +36,12 @@ public final class ChainResult {
      */
     private final double rootQuantity;
 
+    /**
+     * Every run in the chain, from every item - a recipe reached by several items appears once for
+     * each.
+     */
+    private final List<RecipeRun> recipeRuns;
+
     private final ItemQuantities secondaryDemand;
 
     private final double xp;
@@ -57,8 +65,18 @@ public final class ChainResult {
                 .filter(contribution -> contribution.getItemId() == rootItemId)
                 .mapToDouble(ChainItemXp::getQuantity)
                 .sum();
+        this.recipeRuns = this.itemContributions.stream()
+                .flatMap(contribution -> contribution.getRuns().stream())
+                .collect(Collectors.toUnmodifiableList());
         this.secondaryDemand = secondaryDemand;
         this.xp = xp;
+    }
+
+    /**
+     * Whether the chain runs any of these recipes at all.
+     */
+    public boolean runsAnyOf(Collection<Integer> recipeIds) {
+        return recipeRuns.stream().anyMatch(run -> run.getRuns() > 0 && recipeIds.contains(run.getRecipe().getId()));
     }
 
     /**

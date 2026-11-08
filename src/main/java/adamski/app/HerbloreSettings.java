@@ -8,7 +8,7 @@ import java.util.Map;
 @Value
 @With
 public class HerbloreSettings {
-    public static final HerbloreSettings DEFAULT = new HerbloreSettings(true, true, 1, Map.of(), false);
+    public static final HerbloreSettings DEFAULT = new HerbloreSettings(true, true, 1, Map.of(), false, false);
 
     /**
      * Whether secondaries made by a recipe chain count towards the secondaries other chains need
@@ -37,4 +37,9 @@ public class HerbloreSettings {
      * Whether prescription goggles are worn.
      */
     boolean prescriptionGogglesUsed;
+
+    /**
+     * Whether the alchemist's amulet is used.
+     */
+    boolean alchemistsAmuletUsed;
 }

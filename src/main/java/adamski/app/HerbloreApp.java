@@ -4,8 +4,11 @@ import adamski.domain.route.RecipeChainResolver;
 import adamski.domain.route.RecipeSelection;
 import adamski.domain.route.RecipeGraph;
 import adamski.domain.route.RecipeSelector;
+import adamski.domain.result.AlchemistAmuletCalculator;
+import adamski.domain.result.ChainResult;
 import adamski.domain.result.ChainResultCalculator;
 import adamski.domain.result.RecipeModifiers;
+import adamski.data.AlchemistsAmulet;
 import adamski.data.PrescriptionGoggles;
 import adamski.data.Recipes;
 import adamski.domain.ItemQuantities;
@@ -26,6 +29,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.UnaryOperator;
+import java.util.stream.Collectors;
 
 /**
  * Orchestrator - receives changes from the adapter, updates state via the store, runs the
@@ -38,15 +42,12 @@ public class HerbloreApp {
             EnumSet.of(ItemSource.Bank, ItemSource.PotionStorage, ItemSource.SeedVault);
 
     private final List<ResultListener> resultListeners = new CopyOnWriteArrayList<>();
-
     private final List<SelectionListener> selectionListeners = new CopyOnWriteArrayList<>();
+    private final List<AlchemistAmuletListener> amuletListeners = new CopyOnWriteArrayList<>();
 
     private final HerbloreStore store;
-
     private final RecipeChainResolver chainResolver;
-
     private final RecipeSelector selector;
-
     private final List<SecondaryPrecursor> precursors;
 
     @Getter
@@ -107,6 +108,58 @@ public class HerbloreApp {
         publishResult(result);
     }
 
+    /**
+     * Applies the alchemist's amulet to a recipe and recalculates.
+     */
+    public void setAmuletDoses(int recipeId, int dosesPerPotion) {
+        final List<Integer> options = AlchemistsAmulet.dosesPerPotionOptionsByRecipeId().get(recipeId);
+        if (options == null || !options.contains(dosesPerPotion)) return;
+
+        final Map<Integer, Integer> next = new HashMap<>(store.amuletDoses());
+        next.put(recipeId, dosesPerPotion);
+        updateAmuletDoses(next);
+    }
+
+    /**
+     * Stops using the alchemist's amulet on one recipe and recalculates.
+     */
+    public void clearAmuletDoses(int recipeId) {
+        final Map<Integer, Integer> next = new HashMap<>(store.amuletDoses());
+        next.remove(recipeId);
+        updateAmuletDoses(next);
+    }
+
+    private void updateAmuletDoses(Map<Integer, Integer> next) {
+        if (!store.updateAmuletDoses(next)) return;
+
+        log.debug("amulet doses per potion by recipe: {}", next);
+        publishAmulet(store.amuletDoses());
+
+        if (result == null) return;
+
+        result = recalculate();
+        publishResult(result);
+    }
+
+    /**
+     * Replaces every amulet choice with ones saved earlier, and republishes the result.
+     */
+    public void restoreAmuletDoses(Map<Integer, Integer> saved) {
+        final Map<Integer, Integer> allowed = new HashMap<>();
+        saved.forEach((recipeId, dosesPerPotion) -> {
+            final List<Integer> options = AlchemistsAmulet.dosesPerPotionOptionsByRecipeId().get(recipeId);
+            if (options != null && options.contains(dosesPerPotion)) allowed.put(recipeId, dosesPerPotion);
+        });
+
+        if (!store.updateAmuletDoses(allowed)) return;
+
+        log.debug("amulet choices restored: {}", allowed);
+        if (result == null) return;
+
+        result = recalculate();
+        publishResult(result);
+    }
+
     public void updateItems(Map<ItemSource, ItemQuantities> changed) {
         if (!store.updateItems(changed)) return;
 
@@ -129,17 +182,20 @@ public class HerbloreApp {
     public void addResultListener(ResultListener listener) {
         resultListeners.add(listener);
     }
-
     public void removeResultListener(ResultListener listener) {
         resultListeners.remove(listener);
     }
-
     public void addSelectionListener(SelectionListener listener) {
         selectionListeners.add(listener);
     }
-
     public void removeSelectionListener(SelectionListener listener) {
         selectionListeners.remove(listener);
+    }
+    public void addAmuletListener(AlchemistAmuletListener listener) {
+        amuletListeners.add(listener);
+    }
+    public void removeAmuletListener(AlchemistAmuletListener listener) {
+        amuletListeners.remove(listener);
     }
 
     private HerbloreResult recalculate() {
@@ -151,8 +207,13 @@ public class HerbloreApp {
         // Determine which recipe chains will be used (based on product selection)
         final var recipeChains = chainResolver.resolve(ownedItems, store.selection());
 
+        // Derive the effect of the alchemist's amulet, if enabled
+        final Map<Integer, Integer> amuletDoses = settings.isAlchemistsAmuletUsed() ? store.amuletDoses() : Map.of();
+        final Map<Integer, Double> amuletFactors = AlchemistAmuletCalculator.factorsByRecipeId(
+                amuletDoses, AlchemistsAmulet.EXTRA_DOSE_CHANCE);
+
         // Apply modifiers to the selected recipes depending on the player's settings
-        final var modifiedChains = RecipeModifiers.apply(recipeChains, getRecipeModifiers(settings));
+        final var modifiedChains = RecipeModifiers.apply(recipeChains, getRecipeModifiers(settings, amuletFactors));
 
         // Calculate the XP & quantity result for each chain
         final var chainResults = ChainResultCalculator.calculate(modifiedChains, ownedItems);
@@ -164,23 +225,34 @@ public class HerbloreApp {
                 settings.isChainProductsCounted(),
                 settings.isPrecursorsCounted() ? precursors : List.of());
 
-        return new HerbloreResult(ownedItems, store.currentXp(), chainResults, secondaryBalance);
+        return new HerbloreResult(ownedItems, store.currentXp(), chainResults, secondaryBalance,
+                settings.isAlchemistsAmuletUsed()
+                        ? AlchemistAmuletCalculator.findOptions(chainResults,
+                                AlchemistsAmulet.dosesPerPotionOptionsByRecipeId(), amuletDoses)
+                        : List.of(),
+                AlchemistAmuletCalculator.sumCharges(chainResults, amuletFactors),
+                chainResults.stream()
+                        .filter(chain -> chain.runsAnyOf(amuletDoses.keySet()))
+                        .map(ChainResult::getRootItemId)
+                        .collect(Collectors.toSet()));
     }
 
-    /** The modifiers the settings call for, in the order they run. */
-    private static List<UnaryOperator<Recipe>> getRecipeModifiers(HerbloreSettings settings) {
+    private static List<UnaryOperator<Recipe>> getRecipeModifiers(HerbloreSettings settings,
+                                                                  Map<Integer, Double> amuletFactors) {
         final List<UnaryOperator<Recipe>> modifiers = new ArrayList<>();
-        modifiers.add(RecipeModifiers.yieldOverrides(getRecipeYieldOverrides(settings)));
+        modifiers.add(RecipeModifiers.outputOverrides(getYieldsByRecipeId(settings)));
 
         if (settings.isPrescriptionGogglesUsed()) {
-            modifiers.add(RecipeModifiers.ingredientSavings(
-                    PrescriptionGoggles.savedItemsByRecipeId(), PrescriptionGoggles.SAVE_CHANCE));
+            modifiers.add(RecipeModifiers.inputScaling(
+                    PrescriptionGoggles.savedItemsByRecipeId(), 1 - PrescriptionGoggles.SAVE_CHANCE));
         }
+
+        modifiers.add(RecipeModifiers.outputScaling(amuletFactors));
 
         return modifiers;
     }
 
-    private static Map<Integer, Double> getRecipeYieldOverrides(HerbloreSettings settings) {
+    private static Map<Integer, Double> getYieldsByRecipeId(HerbloreSettings settings) {
         final Map<Integer, Double> overrides = new HashMap<>();
         overrides.put(Recipes.CUT_LEAPING_STURGEON_RECIPE_ID, settings.getCaviarSuccessRate());
         settings.getSeedYieldBySeedItemId().forEach((seedItemId, yield) ->
@@ -202,9 +274,19 @@ public class HerbloreApp {
     private void publishSelection(RecipeSelection selection) {
         for (SelectionListener listener : selectionListeners) {
             try {
-                listener.onSelectionChanged(selection);
+                listener.onRecipeSelectionChanged(selection);
             } catch (Exception e) {
                 log.warn("selection listener {} threw", listener.getClass().getSimpleName(), e);
+            }
+        }
+    }
+
+    private void publishAmulet(Map<Integer, Integer> dosesPerPotionByRecipeId) {
+        for (AlchemistAmuletListener listener : amuletListeners) {
+            try {
+                listener.onAmuletConfigurationChanged(dosesPerPotionByRecipeId);
+            } catch (Exception e) {
+                log.warn("amulet listener {} threw", listener.getClass().getSimpleName(), e);
             }
         }
     }

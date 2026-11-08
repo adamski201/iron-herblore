@@ -88,6 +88,18 @@ public interface HerbloreConfig extends net.runelite.client.config.Config
     }
 
     @ConfigItem(
+        keyName = "useAlchemistsAmulet",
+        name = "Use alchemist's amulet",
+        description = "Adds a section to the panel for choosing which potions you use the alchemist's amulet on:"
+            + " a 15% chance of an extra dose, using a charge",
+        position = 5
+    )
+    default boolean useAlchemistsAmulet()
+    {
+        return false;
+    }
+
+    @ConfigItem(
         keyName = "guamSeedYield",
         name = "Guam",
         description = "How many herbs each guam seed grows into",

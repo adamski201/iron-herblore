@@ -79,6 +79,7 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
         clientToolbar.addNavigation(navButton);
         app.addResultListener(panel);
         app.addSelectionListener(selectionPersistence);
+        app.addAmuletListener(selectionPersistence);
 
         // already logged in when the plugin is switched on, so no profile change is coming
         clientThread.invoke(selectionPersistence::load);
@@ -98,6 +99,7 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
         subscribers.clear();
 
         app.removeSelectionListener(selectionPersistence);
+        app.removeAmuletListener(selectionPersistence);
         app.removeResultListener(panel);
         clientToolbar.removeNavigation(navButton);
         panel = null;
@@ -134,7 +136,8 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
                 config.countSecondaryPrecursors(),
                 config.caviarSuccessRate() / 100.0,
                 seedYields(),
-                config.usePrescriptionGoggles());
+                config.usePrescriptionGoggles(),
+                config.useAlchemistsAmulet());
 
         clientThread.invoke(() -> app.applySettings(settings));
     }

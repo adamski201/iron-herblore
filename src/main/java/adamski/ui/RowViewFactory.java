@@ -1,5 +1,6 @@
 package adamski.ui;
 
+import adamski.domain.result.AlchemistAmuletOption;
 import adamski.domain.result.ChainItemXp;
 import adamski.domain.result.ChainRecipeXp;
 import adamski.domain.result.ChainResult;
@@ -56,7 +57,10 @@ final class RowViewFactory {
         this.productRecipesByItem = productRecipesByItem;
     }
 
-    RowView rowOf(ChainResult chain) {
+    /**
+     * @param amuletUsed whether the alchemist's amulet is used on any of the chain's recipes
+     */
+    RowView rowOf(ChainResult chain, boolean amuletUsed) {
         final int rootItemId = chain.getRootItemId();
         final List<RowView.ProductOption> options = new ArrayList<>();
 
@@ -95,6 +99,7 @@ final class RowViewFactory {
                 chain.makesNothing(),
                 chain.makesNothing() ? MAKE_NOTHING : nameOf.apply(productItemId),
                 chain.getOutputQuantity(),
+                amuletUsed,
                 options,
                 xpByItem,
                 xpByRecipe,
@@ -160,6 +165,22 @@ final class RowViewFactory {
 
         final int secondaryItemId = secondary.getSecondaryItemId();
         return new SecondaryView(secondaryItemId, nameOf.apply(secondaryItemId), secondary.net(), breakdown);
+    }
+
+    /**
+     * The alchemist's amulet section: each potion the bank makes that it could be used on, named as
+     * its product, with the charges the choices use.
+     */
+    AmuletView amuletOf(List<AlchemistAmuletOption> options, double charges) {
+        final List<AmuletView.Line> lines = options.stream()
+                .map(option -> new AmuletView.Line(
+                        option.getRecipeId(),
+                        nameOf.apply(option.getProductItemId()),
+                        option.getDosesPerPotionOptions(),
+                        option.getDosesPerPotion()))
+                .collect(Collectors.toList());
+
+        return new AmuletView(charges, lines);
     }
 
     /**

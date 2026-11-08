@@ -1,5 +1,6 @@
 package adamski.app;
 
+import adamski.domain.result.AlchemistAmuletOption;
 import adamski.data.Recipes;
 import adamski.data.SecondaryPrecursors;
 import adamski.domain.ItemQuantities;
@@ -148,6 +149,141 @@ public class HerbloreAppTest {
 
         assertEquals(before.getTotalXp(), app.getResult().getTotalXp(), DELTA);
         assertEquals(9.0, after.getSecondaryDemand().get(ItemID.JANGERBERRIES), DELTA);
+    }
+
+    /**
+     * r44, ranarr unf to a 3-dose defence potion, 75xp.
+     */
+    private static final int DEFENCE_RECIPE = 44;
+
+    /**
+     * r87, super energy to stamina a dose at a time, then r89 to extended stamina, 27.5xp a dose.
+     */
+    private static final int STAMINA_RECIPE = 87;
+    private static final int EXTENDED_STAMINA_RECIPE = 89;
+
+    @Test
+    public void theAmuletAddsDosesButNoXpToItsOwnRecipe() {
+        useAmulet();
+        final double before = bank(items(ItemID.RANARRVIAL, 10)).getTotalXp();
+
+        app.setAmuletDoses(DEFENCE_RECIPE, 3);
+        final HerbloreResult result = app.getResult();
+
+        assertEquals(31.5, result.getChainResults().get(0).getOutputQuantity(), DELTA); // 30 + 10 × 0.15
+        assertEquals(before, result.getTotalXp(), DELTA);
+        assertEquals(1.5, result.getAmuletCharges(), DELTA);
+        assertEquals(Set.of(ItemID.RANARRVIAL), result.getAmuletChainRootItemIds());
+    }
+
+    /**
+     * Upgrading smaller potions makes more doses, which the next recipe turns into xp.
+     */
+    @Test
+    public void theSizeUpgradedChangesTheDosesAndTheXpAfter() {
+        useAmulet();
+        bank(items(ItemID._1DOSE2ENERGY, 30));
+
+        app.setAmuletDoses(STAMINA_RECIPE, 3);
+        assertEquals(1.5, app.getResult().getAmuletCharges(), DELTA);
+        assertEquals(31.5 * 27.5, xpByRecipe(app.getResult()).get(EXTENDED_STAMINA_RECIPE), DELTA);
+
+        app.setAmuletDoses(STAMINA_RECIPE, 1);
+        assertEquals(4.5, app.getResult().getAmuletCharges(), DELTA);
+        assertEquals(34.5 * 27.5, xpByRecipe(app.getResult()).get(EXTENDED_STAMINA_RECIPE), DELTA);
+    }
+
+    @Test
+    public void onlyPotionsTheBankMakesAreOffered() {
+        useAmulet();
+        assertTrue(bank(items(ItemID.BRUTAL_1DOSE1DEFENSE, 4)).getAmuletOptions().isEmpty());
+
+        final List<AlchemistAmuletOption> options = bank(items(ItemID.RANARRVIAL, 10)).getAmuletOptions();
+
+        assertEquals(1, options.size());
+        assertEquals(DEFENCE_RECIPE, options.get(0).getRecipeId());
+        assertEquals(ItemID._1DOSE1DEFENSE, options.get(0).getProductItemId());
+        assertFalse(options.get(0).isUsed());
+    }
+
+    @Test
+    public void anUpgradeOffersEverySizeAndAWholePotionOnlyThree() {
+        useAmulet();
+        bank(items(ItemID._1DOSE2ENERGY, 30));
+
+        final AlchemistAmuletOption stamina = app.getResult().getAmuletOptions().stream()
+                .filter(option -> option.getRecipeId() == STAMINA_RECIPE)
+                .findFirst().orElseThrow();
+        assertEquals(List.of(3, 2, 1), stamina.getDosesPerPotionOptions());
+
+        assertEquals(List.of(3), bank(items(ItemID.RANARRVIAL, 10)).getAmuletOptions().get(0).getDosesPerPotionOptions());
+    }
+
+    /**
+     * Switched off, the choices are kept but count for nothing, and none are offered - so nothing
+     * hidden changes the numbers.
+     */
+    @Test
+    public void switchedOffTheAmuletAddsNothingButKeepsItsChoices() {
+        useAmulet();
+        final double before = bank(items(ItemID.RANARRVIAL, 10)).getChainResults().get(0).getOutputQuantity();
+        app.setAmuletDoses(DEFENCE_RECIPE, 3);
+
+        app.applySettings(HerbloreSettings.DEFAULT);
+
+        assertEquals(before, app.getResult().getChainResults().get(0).getOutputQuantity(), DELTA);
+        assertEquals(0, app.getResult().getAmuletCharges(), DELTA);
+        assertTrue(app.getResult().getAmuletOptions().isEmpty());
+        assertTrue(app.getResult().getAmuletChainRootItemIds().isEmpty());
+
+        useAmulet();
+        assertEquals(1.5, app.getResult().getAmuletCharges(), DELTA);
+    }
+
+    @Test
+    public void aSizeTheRecipeCannotBeMadeInIsRefused() {
+        useAmulet();
+        bank(items(ItemID.RANARRVIAL, 10));
+        final List<Map<Integer, Integer>> told = listenForAmulet();
+
+        app.setAmuletDoses(DEFENCE_RECIPE, 1); // a whole potion is always 3
+        app.setAmuletDoses(999, 3);           // no such recipe
+
+        assertTrue(told.isEmpty());
+        assertEquals(0, app.getResult().getAmuletCharges(), DELTA);
+    }
+
+    @Test
+    public void aChangeIsToldButARestoreIsNot() {
+        useAmulet();
+        final List<Map<Integer, Integer>> told = listenForAmulet();
+
+        app.setAmuletDoses(DEFENCE_RECIPE, 3);
+        app.restoreAmuletDoses(Map.of(STAMINA_RECIPE, 2));
+
+        assertEquals(List.of(Map.of(DEFENCE_RECIPE, 3)), told);
+    }
+
+    @Test
+    public void aRestoredChoiceTheTableNoLongerAllowsIsDropped() {
+        useAmulet();
+        bank(items(ItemID.RANARRVIAL, 10));
+
+        app.restoreAmuletDoses(Map.of(DEFENCE_RECIPE, 3, STAMINA_RECIPE, 4, 999, 3));
+
+        assertEquals(1.5, app.getResult().getAmuletCharges(), DELTA);
+    }
+
+    @Test
+    public void switchingTheAmuletOffRemovesItsDoses() {
+        useAmulet();
+        final double before = bank(items(ItemID.RANARRVIAL, 10)).getChainResults().get(0).getOutputQuantity();
+
+        app.setAmuletDoses(DEFENCE_RECIPE, 3);
+        app.clearAmuletDoses(DEFENCE_RECIPE);
+
+        assertEquals(before, app.getResult().getChainResults().get(0).getOutputQuantity(), DELTA);
+        assertTrue(app.getResult().getAmuletChainRootItemIds().isEmpty());
     }
 
     @Test
@@ -740,6 +876,16 @@ public class HerbloreAppTest {
         final List<HerbloreResult> published = new ArrayList<>();
         app.addResultListener(published::add);
         return published;
+    }
+
+    private void useAmulet() {
+        app.applySettings(HerbloreSettings.DEFAULT.withAlchemistsAmuletUsed(true));
+    }
+
+    private List<Map<Integer, Integer>> listenForAmulet() {
+        final List<Map<Integer, Integer>> told = new ArrayList<>();
+        app.addAmuletListener(told::add);
+        return told;
     }
 
     private List<RecipeSelection> listenForSelections() {

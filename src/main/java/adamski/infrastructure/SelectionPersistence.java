@@ -1,5 +1,6 @@
 package adamski.infrastructure;
 
+import adamski.app.AlchemistAmuletListener;
 import adamski.app.HerbloreApp;
 import adamski.app.SelectionListener;
 import adamski.domain.route.RecipeSelection;
@@ -19,24 +20,17 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Keeps each account's product choices across restarts, in that account's RuneLite profile - banks
- * differ between accounts, and so do the choices made against them.
- * <p>
- * Saves on every pick; loads on login, on switching account, and when the plugin starts. Loading
- * always replaces the whole selection, so an account with nothing saved starts from the defaults
- * rather than inheriting the last account's choices.
- * <p>
- * Saved as JSON of item id to recipe id ({@code -1} to stop). Recipe ids are what is stored, so
- * they must never be renumbered - a renumbered id would silently point a saved choice at a
- * different recipe.
+ * Persists the user's panel configuration.
+ * Saves on every change; loads on login, on switching account, and when the plugin starts.
  */
 @Slf4j
 @Singleton
-public class SelectionPersistence implements SelectionListener {
+public class SelectionPersistence implements SelectionListener, AlchemistAmuletListener {
     static final String CONFIG_GROUP = "herblore-helper";
     static final String SELECTION_KEY = "selection";
+    static final String AMULET_KEY = "amulet";
 
-    private static final Type RECIPE_BY_ITEM_ID = new TypeToken<Map<Integer, Integer>>() {
+    private static final Type INTEGER_BY_INTEGER = new TypeToken<Map<Integer, Integer>>() {
     }.getType();
 
     private final ConfigManager configManager;
@@ -63,12 +57,42 @@ public class SelectionPersistence implements SelectionListener {
      * only.
      */
     public void load() {
-        app.restoreSelection(decode(configManager.getRSProfileConfiguration(CONFIG_GROUP, SELECTION_KEY)));
+        app.restoreSelection(decodeStoredRecipeSelection(configManager.getRSProfileConfiguration(CONFIG_GROUP, SELECTION_KEY)));
+        app.restoreAmuletDoses(decodeStoredAmuletConfiguration(configManager.getRSProfileConfiguration(CONFIG_GROUP, AMULET_KEY)));
     }
 
     @Override
-    public void onSelectionChanged(RecipeSelection selection) {
-        // all defaults is the same as nothing saved, so it leaves nothing behind
+    public void onAmuletConfigurationChanged(Map<Integer, Integer> dosesPerPotionByRecipeId) {
+        if (dosesPerPotionByRecipeId.isEmpty()) {
+            configManager.unsetRSProfileConfiguration(CONFIG_GROUP, AMULET_KEY);
+        } else {
+            configManager.setRSProfileConfiguration(CONFIG_GROUP, AMULET_KEY, encodeAmulet(dosesPerPotionByRecipeId));
+        }
+    }
+
+    String encodeAmulet(Map<Integer, Integer> dosesPerPotionByRecipeId) {
+        return gson.toJson(dosesPerPotionByRecipeId, INTEGER_BY_INTEGER);
+    }
+
+    Map<Integer, Integer> decodeStoredAmuletConfiguration(String saved) {
+        if (saved == null || saved.isEmpty()) return Map.of();
+
+        try {
+            final Map<Integer, Integer> dosesPerPotionByRecipeId = gson.fromJson(saved, INTEGER_BY_INTEGER);
+            if (dosesPerPotionByRecipeId == null) return Map.of();
+
+            final Map<Integer, Integer> readable = new HashMap<>(dosesPerPotionByRecipeId);
+            readable.values().removeIf(doses -> doses == null);
+
+            return readable;
+        } catch (JsonParseException e) {
+            log.warn("ignoring unreadable saved amulet choices: {}", saved, e);
+            return Map.of();
+        }
+    }
+
+    @Override
+    public void onRecipeSelectionChanged(RecipeSelection selection) {
         if (selection.recipeByItemId().isEmpty()) {
             configManager.unsetRSProfileConfiguration(CONFIG_GROUP, SELECTION_KEY);
         } else {
@@ -77,18 +101,14 @@ public class SelectionPersistence implements SelectionListener {
     }
 
     String encode(RecipeSelection selection) {
-        return gson.toJson(selection.recipeByItemId(), RECIPE_BY_ITEM_ID);
+        return gson.toJson(selection.recipeByItemId(), INTEGER_BY_INTEGER);
     }
 
-    /**
-     * @return the selection saved, or the defaults if nothing was or it cannot be read - a damaged
-     * entry must never stop the panel working
-     */
-    RecipeSelection decode(String saved) {
+    RecipeSelection decodeStoredRecipeSelection(String saved) {
         if (saved == null || saved.isEmpty()) return RecipeSelection.ALL_DEFAULT;
 
         try {
-            final Map<Integer, Integer> recipeByItemId = gson.fromJson(saved, RECIPE_BY_ITEM_ID);
+            final Map<Integer, Integer> recipeByItemId = gson.fromJson(saved, INTEGER_BY_INTEGER);
             if (recipeByItemId == null) return RecipeSelection.ALL_DEFAULT;
 
             final Map<Integer, Integer> readable = new HashMap<>(recipeByItemId);

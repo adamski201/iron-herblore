@@ -1,5 +1,6 @@
 package adamski.ui;
 
+import adamski.domain.result.AlchemistAmuletOption;
 import adamski.domain.result.ChainItemXp;
 import adamski.domain.result.ChainRecipeXp;
 import adamski.domain.result.ChainResult;
@@ -65,7 +66,7 @@ public class RowViewFactoryTest {
 
         final RowViewFactory factory = new RowViewFactory(itemId -> "item " + itemId, Map.of(HERB, shuffled));
         final RowView row = factory.rowOf(new ChainResult(HERB, POTION,
-                List.of(new ChainItemXp(HERB, 10, List.of(), 0)), List.of(), 0, ItemQuantities.EMPTY, 0));
+                List.of(new ChainItemXp(HERB, 10, List.of(), 0)), List.of(), 0, ItemQuantities.EMPTY, 0), false);
 
         assertEquals(List.of(HERB, 14, 13, 11, 15, 10, 12), row.getProductOptions().stream()
                 .map(RowView.ProductOption::getItemId)
@@ -74,7 +75,7 @@ public class RowViewFactoryTest {
 
     @Test
     public void makingNothingIsOfferedFirstAsTheRootItself() {
-        final List<RowView.ProductOption> options = factory.rowOf(potionRow()).getProductOptions();
+        final List<RowView.ProductOption> options = factory.rowOf(potionRow(), false).getProductOptions();
 
         assertEquals(new RowView.ProductOption(HERB, RowViewFactory.MAKE_NOTHING), options.get(0));
         assertEquals(List.of("Make nothing", "Clean herb", "Potion"), options.stream()
@@ -85,7 +86,7 @@ public class RowViewFactoryTest {
     @Test
     public void aRowEndingAtItsRootMakesNothing() {
         final RowView row = factory.rowOf(new ChainResult(HERB, HERB,
-                List.of(new ChainItemXp(HERB, 10, List.of(), 0)), List.of(), 0, ItemQuantities.EMPTY, 0));
+                List.of(new ChainItemXp(HERB, 10, List.of(), 0)), List.of(), 0, ItemQuantities.EMPTY, 0), false);
 
         assertTrue(row.isSwitchedOff());
         assertEquals("Make nothing", row.getProductName());
@@ -93,12 +94,12 @@ public class RowViewFactoryTest {
 
     @Test
     public void potionsLoseTheirOneDoseSuffix() {
-        assertEquals("Potion", factory.rowOf(potionRow()).getProductName());
+        assertEquals("Potion", factory.rowOf(potionRow(), false).getProductName());
     }
 
     @Test
     public void theRootQuantityIsWhatIsHeldOfTheRootAlone() {
-        assertEquals(10, factory.rowOf(potionRow()).getRootQuantity(), DELTA);
+        assertEquals(10, factory.rowOf(potionRow(), false).getRootQuantity(), DELTA);
     }
 
     /**
@@ -106,7 +107,7 @@ public class RowViewFactoryTest {
      */
     @Test
     public void itemsWorthNothingAreLeftOutOfTheBreakdownByItem() {
-        assertEquals(List.of("10 × Grimy herb", "4 × Clean herb"), factory.rowOf(potionRow()).getXpByItem().stream()
+        assertEquals(List.of("10 × Grimy herb", "4 × Clean herb"), factory.rowOf(potionRow(), false).getXpByItem().stream()
                 .map(RowView.Line::getName)
                 .collect(Collectors.toList()));
     }
@@ -114,13 +115,28 @@ public class RowViewFactoryTest {
     @Test
     public void aRecipeLineNamesItsInputAndOutput() {
         assertEquals(new RowView.RecipeLine(350, "Clean herb", "Potion"),
-                factory.rowOf(potionRow()).getXpByRecipe().get(1));
+                factory.rowOf(potionRow(), false).getXpByRecipe().get(1));
     }
 
     @Test
     public void secondaryDemandIsRoundedUpMostNeededFirst() {
         assertEquals(List.of(new RowView.Line(14, "Eye of newt"), new RowView.Line(1, "Snape grass")),
-                factory.rowOf(potionRow()).getSecondaryDemand());
+                factory.rowOf(potionRow(), false).getSecondaryDemand());
+    }
+
+    @Test
+    public void aRowCarriesWhetherTheAmuletIsUsedOnIt() {
+        assertTrue(factory.rowOf(potionRow(), true).isAmuletUsed());
+    }
+
+    @Test
+    public void anAmuletLineIsNamedAsItsPotionAndKeepsItsChoices() {
+        final AmuletView amulet = factory.amuletOf(
+                List.of(new AlchemistAmuletOption(MIXING.getId(), POTION, List.of(3, 2, 1), 2)), 12.5);
+
+        assertEquals(12.5, amulet.getCharges(), DELTA);
+        assertEquals(new AmuletView.Line(MIXING.getId(), "Potion", List.of(3, 2, 1), 2), amulet.getLines().get(0));
+        assertTrue(amulet.getLines().get(0).isUsed());
     }
 
     @Test

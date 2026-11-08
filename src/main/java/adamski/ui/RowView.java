@@ -46,6 +46,11 @@ class RowView {
      */
     double outputQuantity;
 
+    /**
+     * Whether the alchemist's amulet is used on any of the row's recipes - marked on the product, so
+     * its extra doses are no surprise.
+     */
+    boolean amuletUsed;
 
     List<ProductOption> productOptions;
 

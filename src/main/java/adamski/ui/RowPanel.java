@@ -5,7 +5,9 @@ import adamski.ui.icon.CaretIcon;
 import adamski.ui.icon.CornerArrowIcon;
 import adamski.ui.icon.NoEntryIcon;
 import adamski.ui.icon.RightArrowIcon;
+import adamski.ui.icon.SmallSpriteIcon;
 import adamski.ui.icon.StackIcon;
+import net.runelite.api.gameval.ItemID;
 
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
@@ -142,7 +144,21 @@ class RowPanel extends JPanel {
         notch.setBorder(new EmptyBorder(0, 3, 0, 6));
         notch.add(arrow, BorderLayout.WEST);
         notch.add(smallLabel(row.getProductName()), BorderLayout.CENTER);
-        notch.add(xp, BorderLayout.EAST);
+
+        if (row.isAmuletUsed()) {
+            // the amulet's extra doses are in the product's stack, so say where they came from
+            final SmallSpriteIcon amulet = new SmallSpriteIcon(iconOf.apply(ItemID.AMULET_OF_CHEMISTRY_IMBUED_CHARGED));
+            final JLabel marker = new JLabel(amulet);
+            amulet.repaintWhenLoaded(marker);
+
+            final JPanel east = new JPanel(new BorderLayout(3, 0));
+            east.setOpaque(false);
+            east.add(marker, BorderLayout.WEST);
+            east.add(xp, BorderLayout.EAST);
+            notch.add(east, BorderLayout.EAST);
+        } else {
+            notch.add(xp, BorderLayout.EAST);
+        }
 
         final JLabel productIcon = new JLabel();
         productIcon.setHorizontalAlignment(SwingConstants.RIGHT);
@@ -200,7 +216,8 @@ class RowPanel extends JPanel {
             rootName.setToolTipText(held);
         }
 
-        final String makes = "Makes " + Amounts.abbreviate(row.getOutputQuantity()) + " × " + row.getProductName();
+        final String makes = "Makes " + Amounts.abbreviate(row.getOutputQuantity()) + " × " + row.getProductName()
+                + (row.isAmuletUsed() ? ", with the alchemist's amulet" : "");
         listenOn(new MenuOpener(menu, summary, hovered -> {
             notch.setBackground(hovered ? PRODUCT_HOVER : PRODUCT_SHADE);
             product.setBackground(hovered ? PRODUCT_HOVER : PRODUCT_SHADE);

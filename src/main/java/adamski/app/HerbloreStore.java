@@ -13,6 +13,7 @@ import java.util.Map;
 public class HerbloreStore {
     private final Map<ItemSource, ItemQuantities> itemsBySource = new EnumMap<>(ItemSource.class);
     private RecipeSelection selection = RecipeSelection.ALL_DEFAULT;
+    private Map<Integer, Integer> amuletDosesByRecipeId = Map.of();
     private HerbloreSettings settings = HerbloreSettings.DEFAULT;
     private int currentXp;
 
@@ -53,6 +54,24 @@ public class HerbloreStore {
      */
     public RecipeSelection selection() {
         return selection;
+    }
+
+    /**
+     * @return true if it differs from what is already held
+     */
+    public boolean updateAmuletDoses(Map<Integer, Integer> next) {
+        if (next.equals(amuletDosesByRecipeId)) return false;
+
+        amuletDosesByRecipeId = Map.copyOf(next);
+
+        return true;
+    }
+
+    /**
+     * @return the size of potion each recipe the amulet is used on is made in. Immutable.
+     */
+    public Map<Integer, Integer> amuletDoses() {
+        return amuletDosesByRecipeId;
     }
 
     /**

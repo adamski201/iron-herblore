@@ -131,8 +131,8 @@ public class HerbloreRecipesTest {
     @Test
     public void everyRouteToAProductIsWorthTheSameXpWithPrescriptionGoggles() {
         assertEveryRouteToAProductIsWorthTheSameXp(Recipes.all().stream()
-                .map(RecipeModifiers.ingredientSavings(PrescriptionGoggles.savedItemsByRecipeId(),
-                        PrescriptionGoggles.SAVE_CHANCE))
+                .map(RecipeModifiers.inputScaling(PrescriptionGoggles.savedItemsByRecipeId(),
+                        1 - PrescriptionGoggles.SAVE_CHANCE))
                 .collect(Collectors.toList()));
     }
 
