@@ -179,7 +179,7 @@ public final class Recipes {
             new Recipe(78, new Ingredient(ItemID.ELKHORNVIAL, 1), new Ingredient[]{new Ingredient(ItemID.SQUID_PASTE, 1)},
                     new Ingredient(ItemID.HAEMOSTATIC_POULTICE, 1), MISC, 27f, 0),
             new Recipe(79, new Ingredient(ItemID.HAEMOSTATIC_POULTICE, 1), new Ingredient[]{new Ingredient(ItemID.COTTON_YARN, 1)},
-                    new Ingredient(ItemID._1DOSEHAEMOSTATICDRESSING, 1), MISC, 100f, 0),
+                    new Ingredient(ItemID._1DOSEHAEMOSTATICDRESSING, 3), MISC, 100f, 0),
             new Recipe(80, new Ingredient(ItemID.TORSTOLVIAL, 1), new Ingredient[]{new Ingredient(ItemID.DEMONIC_TALLOW, 1)},
                     new Ingredient(ItemID._1DOSESURGE, 3), POTION, 185f, 0),
             new Recipe(81, new Ingredient(ItemID.TORSTOL, 1),
