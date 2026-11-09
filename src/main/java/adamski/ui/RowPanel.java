@@ -49,9 +49,10 @@ import java.util.function.Supplier;
  *   [root]  Root item name           |        |
  *   [icon]  ↳ Product name      xp   | [prod] |
  * </pre>
- * The root's half - its icon and name on the plain background - folds the xp breakdown open.
- * The product's half - the shaded notch under the name and the icon on the right - opens a menu
- * of what else the row could make. Both icons carry their quantity the way the game draws a stack.
+ * The whole row is one shade. The root's half - its icon and name - folds the xp breakdown open.
+ * The product's half - the notch under the name and the icon on the right - opens a menu of what
+ * else the row could make. Each half lights up on its own when hovered, which with the notch's
+ * caret is what shows they are two things to click. Both icons carry their quantity the way the game draws a stack.
  * <p>
  * A row set to make nothing is switched off, and shrinks to one dim line that blends into the
  * panel - still there, since it is the only place to switch the row back on, but out of the way.
@@ -61,11 +62,22 @@ import java.util.function.Supplier;
  * state beyond the one row.
  */
 class RowPanel extends JPanel {
-    private static final Color ROOT_SHADE = new Color(0x1d1d1d);
-    private static final Color ROOT_HOVER = new Color(0x222222);
-    // between the RuneLite greys: close enough to the row to read as one piece, far enough to show
-    private static final Color PRODUCT_SHADE = new Color(0x242424);
-    private static final Color PRODUCT_HOVER = new Color(0x2e2e2e);
+    /**
+     * Also the block behind the secondaries section, so it reads as the same kind of thing as a row.
+     */
+    static final Color ROOT_SHADE = new Color(0x1d1d1d);
+    /**
+     * Hovering either half of a row, or a secondary's line: one shade across the panel, so the
+     * halves of a row read as parts of one thing.
+     */
+    static final Color ROOT_HOVER = new Color(0x262626);
+
+    /**
+     * Behind a breakdown - a row's, or a secondary's - a touch darker than the line it folds out
+     * of, so it reads as tucked under it rather than as more of it. Darker, since lighter is what
+     * hovering means.
+     */
+    static final Color DETAIL_SHADE = new Color(0x181818);
 
     /**
      * The panel's own background, so a switched-off row all but disappears into it.
@@ -140,7 +152,7 @@ class RowPanel extends JPanel {
         xp.setForeground(Color.WHITE);
 
         final JPanel notch = new JPanel(new BorderLayout(3, 0));
-        notch.setBackground(PRODUCT_SHADE);
+        notch.setBackground(ROOT_SHADE);
         notch.setBorder(new EmptyBorder(0, 3, 0, 6));
         notch.add(arrow, BorderLayout.WEST);
         notch.add(smallLabel(row.getProductName()), BorderLayout.CENTER);
@@ -171,7 +183,7 @@ class RowPanel extends JPanel {
         caret.setBorder(new EmptyBorder(0, 0, 4, 3));
 
         final JPanel product = new JPanel(new BorderLayout());
-        product.setBackground(PRODUCT_SHADE);
+        product.setBackground(ROOT_SHADE);
         product.setPreferredSize(PRODUCT_ICON_CELL);
         product.add(productIcon, BorderLayout.CENTER);
         product.add(caret, BorderLayout.EAST);
@@ -187,7 +199,7 @@ class RowPanel extends JPanel {
         summary.add(lines, BorderLayout.CENTER);
         summary.add(product, BorderLayout.EAST);
 
-        detail.setBackground(ROOT_SHADE);
+        detail.setBackground(DETAIL_SHADE);
 
         final String held = held(row);
         if (hasDetail) {
@@ -219,8 +231,8 @@ class RowPanel extends JPanel {
         final String makes = "Makes " + Amounts.abbreviate(row.getOutputQuantity()) + " × " + row.getProductName()
                 + (row.isAmuletUsed() ? ", with the alchemist's amulet" : "");
         listenOn(new MenuOpener(menu, summary, hovered -> {
-            notch.setBackground(hovered ? PRODUCT_HOVER : PRODUCT_SHADE);
-            product.setBackground(hovered ? PRODUCT_HOVER : PRODUCT_SHADE);
+            notch.setBackground(hovered ? ROOT_HOVER : ROOT_SHADE);
+            product.setBackground(hovered ? ROOT_HOVER : ROOT_SHADE);
         }), makes + " - click to change", notch, product);
 
         add(summary, BorderLayout.NORTH);

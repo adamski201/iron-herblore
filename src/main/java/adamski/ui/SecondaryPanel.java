@@ -19,7 +19,14 @@ import java.util.function.Consumer;
  * Immutable once built, like a row: the panel builds a new one for every result.
  */
 class SecondaryPanel extends JPanel {
-    private static final Color HOVER = ColorScheme.DARKER_GRAY_COLOR;
+    private static final Color HOVER = RowPanel.ROOT_HOVER;
+
+
+    /**
+     * Room either side of the text, inside the section's block. On the line rather than the block
+     * so the hover reaches the block's edges.
+     */
+    private static final int SIDE_PADDING = 6;
 
     /**
      * How much taller a secondary's line is than a plain line, as a fraction of its height.
@@ -42,11 +49,11 @@ class SecondaryPanel extends JPanel {
 
         // taller than a plain line by EXTRA_HEIGHT, split above and below, so it is easier to click
         final int padding = Math.round(summary.getPreferredSize().height * EXTRA_HEIGHT / 2);
-        summary.setBorder(new EmptyBorder(padding, 0, padding, 0));
+        summary.setBorder(new EmptyBorder(padding, SIDE_PADDING, padding, SIDE_PADDING));
 
         final JPanel detail = new JPanel(new DynamicGridLayout(0, 1, 0, 1));
-        detail.setOpaque(false);
-        detail.setBorder(new EmptyBorder(1, 8, 4, 0));
+        detail.setBackground(RowPanel.DETAIL_SHADE);
+        detail.setBorder(new EmptyBorder(3, SIDE_PADDING + 8, 4, SIDE_PADDING));
         for (RowView.Line line : secondary.getBreakdown()) {
             detail.add(RowPanel.lineOf(line.getName(), Amounts.abbreviate(line.getAmount()), ColorScheme.LIGHT_GRAY_COLOR));
         }

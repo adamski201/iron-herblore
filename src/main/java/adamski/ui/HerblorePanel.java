@@ -86,6 +86,13 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
     private boolean amuletExpanded;
 
     /**
+     * Whether the recipes and secondaries sections are open. Open to start with, since they are
+     * what the panel is for; like the amulet's, kept for the session.
+     */
+    private boolean recipesExpanded = true;
+    private boolean secondariesExpanded = true;
+
+    /**
      * Where each row sits, kept between results. EDT only.
      */
     private final RowOrder rowOrder = new RowOrder();
@@ -321,11 +328,23 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
 
         secondaries.removeAll();
         if (!secondaryViews.isEmpty()) {
-            secondaries.add(heading("Secondaries"));
+            // the lines sit on one block in the rows' shade, the heading above it like the rows'
+            final JPanel list = new JPanel(new DynamicGridLayout(0, 1, 0, 1));
+            list.setBackground(RowPanel.ROOT_SHADE);
+            list.setBorder(new EmptyBorder(3, 0, 3, 0));
+            list.setVisible(secondariesExpanded);
+
+            secondaries.add(new SectionHeading("Secondaries", secondariesExpanded, expanded -> {
+                secondariesExpanded = expanded;
+                list.setVisible(expanded);
+                secondaries.revalidate();
+                secondaries.repaint();
+            }, null, null));
+            secondaries.add(list);
 
             for (SecondaryView secondary : secondaryViews) {
                 final int itemId = secondary.getItemId();
-                secondaries.add(new SecondaryPanel(secondary, expandedSecondaryItemIds.contains(itemId),
+                list.add(new SecondaryPanel(secondary, expandedSecondaryItemIds.contains(itemId),
                         expanded -> {
                             if (expanded) expandedSecondaryItemIds.add(itemId);
                             else expandedSecondaryItemIds.remove(itemId);
@@ -376,36 +395,12 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
         charges.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
         charges.setToolTipText("One charge per extra dose the amulet makes, on average");
 
-        // the default font, since the RuneScape ones may lack the arrows
-        final JLabel arrow = new JLabel(arrowOf(amuletExpanded));
-        arrow.setForeground(Color.WHITE);
-
-        // on the right, so the title lines up with the other headings
-        final JPanel right = new JPanel(new BorderLayout(6, 0));
-        right.setOpaque(false);
-        right.add(charges, BorderLayout.CENTER);
-        right.add(arrow, BorderLayout.EAST);
-
-        final JPanel heading = new JPanel(new BorderLayout());
-        heading.setOpaque(false);
-        heading.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        heading.add(heading("Alchemist's amulet"), BorderLayout.WEST);
-        heading.add(right, BorderLayout.EAST);
-        heading.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                amuletExpanded = !amuletExpanded;
-                choices.setVisible(amuletExpanded);
-                arrow.setText(arrowOf(amuletExpanded));
-                amulet.revalidate();
-                amulet.repaint();
-            }
-        });
-        return heading;
-    }
-
-    private static String arrowOf(boolean expanded) {
-        return expanded ? "▾" : "▸";
+        return new SectionHeading("Alchemist's amulet", amuletExpanded, expanded -> {
+            amuletExpanded = expanded;
+            choices.setVisible(expanded);
+            amulet.revalidate();
+            amulet.repaint();
+        }, charges, null);
     }
 
     /**
@@ -435,7 +430,8 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
             }
 
             panels.put(rootItemId, panel);
-            rows.add(panel);
+            // folded away, the panels are still kept, so opening the section rebuilds nothing
+            if (recipesExpanded) rows.add(panel);
         }
 
         shownRowByRootItemId = rowByRootItemId;
@@ -443,7 +439,8 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
     }
 
     /**
-     * "Recipes", with an eye on the right that shows or hides rows switched off.
+     * "Recipes", with an eye on the right that shows or hides rows switched off, and folds the rows
+     * away when clicked anywhere else.
      */
     private JPanel recipesHeading() {
         updateEye(false);
@@ -470,11 +467,12 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
             }
         });
 
-        final JPanel heading = new JPanel(new BorderLayout());
-        heading.setOpaque(false);
-        heading.add(heading("Recipes"), BorderLayout.WEST);
-        heading.add(eye, BorderLayout.EAST);
-        return heading;
+        return new SectionHeading("Recipes", recipesExpanded, expanded -> {
+            recipesExpanded = expanded;
+            drawRows(shownRowByRootItemId);
+            revalidate();
+            repaint();
+        }, null, eye);
     }
 
     private void updateEye(boolean hovered) {
@@ -499,13 +497,6 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
         }
 
         return tinted;
-    }
-
-    private static JLabel heading(String text) {
-        final JLabel heading = new JLabel(text);
-        heading.setFont(FontManager.getRunescapeBoldFont());
-        heading.setForeground(Color.WHITE);
-        return heading;
     }
 
     private AsyncBufferedImage spriteOf(int itemId) {
