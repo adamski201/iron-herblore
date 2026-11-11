@@ -8,7 +8,7 @@ import java.util.Map;
 @Value
 @With
 public class HerbloreSettings {
-    public static final HerbloreSettings DEFAULT = new HerbloreSettings(true, true, 1, Map.of(), false, false);
+    public static final HerbloreSettings DEFAULT = new HerbloreSettings(true, true, 1, Map.of(), true, false, false);
 
     /**
      * Whether secondaries made by a recipe chain count towards the secondaries other chains need
@@ -32,6 +32,11 @@ public class HerbloreSettings {
      * default.
      */
     Map<Integer, Double> seedYieldBySeedItemId;
+
+    /**
+     * Whether held seeds and coral frags are considered in calculations.
+     */
+    boolean seedsCounted;
 
     /**
      * Whether prescription goggles are worn.

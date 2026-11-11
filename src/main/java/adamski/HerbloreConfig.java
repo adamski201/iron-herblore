@@ -61,6 +61,17 @@ public interface HerbloreConfig extends net.runelite.client.config.Config
         return true;
     }
 
+    @ConfigItem(
+        keyName = "countSeeds",
+        name = "Count seeds and frags",
+        description = "Whether herb seeds and coral frags count towards the xp",
+        position = 3
+    )
+    default boolean countSeeds()
+    {
+        return true;
+    }
+
     @Range(max = 100)
     @Units(Units.PERCENT)
     @ConfigItem(
@@ -68,7 +79,7 @@ public interface HerbloreConfig extends net.runelite.client.config.Config
         name = "Caviar success rate",
         description = "How often cutting a leaping sturgeon gives caviar. Always 100% from 80 Cooking;"
             + " lower it if you will cut them below that",
-        position = 3
+        position = 4
     )
     default int caviarSuccessRate()
     {
@@ -80,7 +91,7 @@ public interface HerbloreConfig extends net.runelite.client.config.Config
         name = "Use prescription goggles",
         description = "Assume prescription goggles are always worn: a 10% chance to"
             + " save the secondary where applicable (inc. torstol in the case of SCB and caviar for barbarian mixes).",
-        position = 4
+        position = 5
     )
     default boolean usePrescriptionGoggles()
     {
@@ -92,7 +103,7 @@ public interface HerbloreConfig extends net.runelite.client.config.Config
         name = "Use alchemist's amulet",
         description = "Adds a section to the panel for choosing which potions you use the alchemist's amulet on:"
             + " a 15% chance of an extra dose, using a charge",
-        position = 5
+        position = 6
     )
     default boolean useAlchemistsAmulet()
     {

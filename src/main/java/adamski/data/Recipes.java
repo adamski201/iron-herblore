@@ -290,7 +290,7 @@ public final class Recipes {
 
             // --- leaping sturgeon -> caviar ------------------------------
             // Always succeeds from 80 Cooking; below that, the success rate setting is its yield
-            new Recipe(CUT_LEAPING_STURGEON_RECIPE_ID, new Ingredient(ItemID.BRUT_STURGEON, 1), NONE, new Ingredient(ItemID.BRUT_CAVIAR, 1), SEED, 0f, 0)
+            new Recipe(CUT_LEAPING_STURGEON_RECIPE_ID, new Ingredient(ItemID.BRUT_STURGEON, 1), NONE, new Ingredient(ItemID.BRUT_CAVIAR, 1), MISC, 0f, 0)
     );
 
     /**
@@ -298,6 +298,11 @@ public final class Recipes {
      */
     private static final Set<Integer> RELEVANT_ITEM_IDS = RECIPES.stream()
             .flatMap(Recipes::getItemIdsForRecipe)
+            .collect(Collectors.toSet());
+
+    private static final Set<Integer> SEED_ITEM_IDS = RECIPES.stream()
+            .filter(recipe -> recipe.getTag() == SEED)
+            .map(recipe -> recipe.getPrimary().getItemId())
             .collect(Collectors.toSet());
 
     private Recipes() {
@@ -316,6 +321,10 @@ public final class Recipes {
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("no recipe grows item " + seedItemId))
                 .getId();
+    }
+
+    public static boolean isSeed(int itemId) {
+        return SEED_ITEM_IDS.contains(itemId);
     }
 
     public static boolean isRelevantItem(int itemId) {

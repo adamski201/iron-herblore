@@ -129,6 +129,41 @@ public class HerbloreAppTest {
         assertEquals(2 * 10.0 * GRIMY_RANARR_XP, app.getResult().getTotalXp(), DELTA);
     }
 
+    /**
+     * Seeds and frags left uncounted are as if not held - wherever they are held. Leaping sturgeon
+     * are cut, not grown, so they still count.
+     */
+    @Test
+    public void seedsLeftUncountedMatchABankWithoutThem() {
+        final Map<Integer, Integer> bank = new HashMap<>();
+        bank.put(ItemID.UNIDENTIFIED_RANARR, 3);
+        bank.put(ItemID.BRUT_STURGEON, 4);
+        bank.put(ItemID.CORAL_ELKHORN_FRAG, 2);
+
+        final Map<ItemSource, ItemQuantities> sources = source(ItemSource.Bank, bank);
+        sources.put(ItemSource.SeedVault, ItemQuantities.counted(items(ItemID.RANARR_SEED, 5)));
+        app.updateItems(sources);
+        app.applySettings(HerbloreSettings.DEFAULT.withSeedsCounted(false));
+
+        final Map<Integer, Integer> withoutSeeds = new HashMap<>(bank);
+        withoutSeeds.remove(ItemID.CORAL_ELKHORN_FRAG);
+        final HerbloreApp seedless = new HerbloreApp(new HerbloreStore(), GRAPH, SecondaryPrecursors.all());
+        seedless.updateItems(source(ItemSource.Bank, withoutSeeds));
+
+        assertEquals(seedless.getResult(), app.getResult());
+    }
+
+    @Test
+    public void countingSeedsAgainRestoresTheirXp() {
+        final double counted = bank(items(ItemID.RANARR_SEED, 2)).getTotalXp();
+
+        app.applySettings(HerbloreSettings.DEFAULT.withSeedsCounted(false));
+        assertEquals(0, app.getResult().getTotalXp(), DELTA);
+
+        app.applySettings(HerbloreSettings.DEFAULT);
+        assertEquals(counted, app.getResult().getTotalXp(), DELTA);
+    }
+
     @Test
     public void prescriptionGogglesSavingCaviarMakeMoreMixes() {
         bank(items(ItemID.BRUT_CAVIAR, 9));

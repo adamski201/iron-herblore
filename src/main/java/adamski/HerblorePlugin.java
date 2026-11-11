@@ -136,6 +136,7 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
                 config.countSecondaryPrecursors(),
                 config.caviarSuccessRate() / 100.0,
                 seedYields(),
+                config.countSeeds(),
                 config.usePrescriptionGoggles(),
                 config.useAlchemistsAmulet());
 

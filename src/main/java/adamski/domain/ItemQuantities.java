@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BiConsumer;
+import java.util.function.Predicate;
 
 /**
  * How much of each item, keyed by item id and measured in 1-dose units.
@@ -55,6 +56,16 @@ public final class ItemQuantities {
 
     public void forEach(BiConsumer<Integer, Double> action) {
         byItemId.forEach(action);
+    }
+
+    /**
+     * @return these quantities less every item the predicate matches
+     */
+    public ItemQuantities without(Predicate<Integer> dropped) {
+        final Map<Integer, Double> kept = new HashMap<>(byItemId);
+        kept.keySet().removeIf(dropped);
+
+        return of(kept);
     }
 
     public ItemQuantities plus(ItemQuantities other) {

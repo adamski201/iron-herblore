@@ -201,8 +201,9 @@ public class HerbloreApp {
     private HerbloreResult recalculate() {
         final var settings = store.settings();
 
-        // Gather all owned items across item sources e.g. bank, seed vault
-        final var ownedItems = mergeSources(store.itemsBySource());
+        // Gather all owned items across item sources e.g. bank, seed vault.
+        final var mergedItems = mergeSources(store.itemsBySource());
+        final var ownedItems = settings.isSeedsCounted() ? mergedItems : mergedItems.without(Recipes::isSeed);
 
         // Determine which recipe chains will be used (based on product selection)
         final var recipeChains = chainResolver.resolve(ownedItems, store.selection());
