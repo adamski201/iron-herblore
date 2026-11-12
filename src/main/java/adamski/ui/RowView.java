@@ -11,19 +11,10 @@ import java.util.List;
 @Value
 class RowView {
     /**
-     * What a product is picked against - the row's entry item, which the app needs back.
+     * What a product is picked against - the app needs it back.
      */
     int rootItemId;
-
-    /**
-     * The item the row starts from, which is also what it is called - two torstol rows, one from
-     * grimy herbs and one from unf vials, are told apart by it.
-     */
     String rootItemName;
-
-    /**
-     * How much of the root item is held, in 1-dose units.
-     */
     double rootQuantity;
 
 
@@ -31,39 +22,17 @@ class RowView {
 
     int productItemId;
 
-    /**
-     * Set to make nothing - shown as one dim line until a product is picked again.
-     */
     boolean switchedOff;
-
-    /**
-     * What the row ends at, or "Make nothing" when it ends where it starts.
-     */
     String productName;
-
-    /**
-     * How much of the product is made, in 1-dose units.
-     */
     double outputQuantity;
-
-    /**
-     * Whether the alchemist's amulet is used on any of the row's recipes - marked on the product, so
-     * its extra doses are no surprise.
-     */
     boolean amuletUsed;
 
     List<ProductOption> productOptions;
 
-    /**
-     * What each held item contributed, named with how much of it is held.
-     */
     List<Line> xpByItem;
 
     List<RecipeLine> xpByRecipe;
 
-    /**
-     * How much of each secondary the row's recipes use up, whole.
-     */
     List<Line> secondaryDemand;
 
     @Value
@@ -78,9 +47,6 @@ class RowView {
         String name;
     }
 
-    /**
-     * What one recipe contributed, named by what goes in and what comes out.
-     */
     @Value
     static class RecipeLine {
         double xp;

@@ -36,25 +36,19 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+/**
+ * Fields are touched on the EDT only, unless noted.
+ */
 public class HerblorePanel extends PluginPanel implements ResultListener {
-    /**
-     * The title's icon, at most this wide and tall.
-     */
     private static final int LOGO_SIZE = 20;
 
-    /**
-     * RuneLite's own eye pair (from Screen Markers and Loot Tracker, BSD-2), copied in rather than
-     * read from those plugins' folders, which could move. Recoloured to match the cog.
-     */
+    // RuneLite's eye icons (Screen Markers, Loot Tracker; BSD-2), copied in and recoloured to match the cog
     private static final int EYE_SIZE = 14;
     private static final BufferedImage EYE_OPEN = ImageUtil.resizeImage(
             ImageUtil.loadImageResource(HerblorePanel.class, "eye_open.png"), EYE_SIZE, EYE_SIZE);
     private static final BufferedImage EYE_SHUT = ImageUtil.resizeImage(
             ImageUtil.loadImageResource(HerblorePanel.class, "eye_shut.png"), EYE_SIZE, EYE_SIZE);
 
-    /**
-     * The title's and heading's buttons - the cog and the eye - share these, so they match.
-     */
     private static final Color BUTTON = new Color(0x8C, 0x8C, 0x8C);
     private static final Color BUTTON_HOVER = Color.WHITE;
 
@@ -69,97 +63,56 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
     private final JPanel secondaries = new JPanel(new DynamicGridLayout(0, 1, 0, 1));
     private final JPanel amulet = new JPanel(new BorderLayout(0, 2));
 
-    /**
-     * Which rows are open, by root item, so they stay open when the rows are rebuilt. EDT only.
-     */
+    // What is open is kept here, because rows and sections are rebuilt for every result
     private final Set<Integer> expandedRootItemIds = new HashSet<>();
-
-    /**
-     * Which secondaries are open, by item, for the same reason. EDT only.
-     */
     private final Set<Integer> expandedSecondaryItemIds = new HashSet<>();
-
-    /**
-     * Whether the amulet section shows its choices. Kept here because the section is rebuilt for
-     * every result; closed to start with, since the choices are set once and rarely changed.
-     */
     private boolean amuletExpanded;
-
-    /**
-     * Whether the recipes and secondaries sections are open. Open to start with, since they are
-     * what the panel is for; like the amulet's, kept for the session.
-     */
     private boolean recipesExpanded = true;
     private boolean secondariesExpanded = true;
 
-    /**
-     * Where each row sits, kept between results. EDT only.
-     */
     private final RowOrder rowOrder = new RowOrder();
 
     /**
-     * What each row showed last time, and the panel showing it, by root item. A row whose view has
-     * not changed is kept as it is - no rebuild, and its hover, open menu and icons are left alone.
-     * EDT only.
+     * A row whose view has not changed keeps its panel, so its hover and open menu survive.
      */
     private Map<Integer, RowView> shownRowByRootItemId = new HashMap<>();
     private Map<Integer, RowPanel> panelByRootItemId = new HashMap<>();
 
     /**
-     * Every sprite asked for, kept here rather than left to ItemManager's cache, which holds 128
-     * across every plugin. A sprite evicted there comes back blank until the client thread redraws
-     * it, which flickers. A few hundred herblore items at most. EDT only.
+     * Kept here because ItemManager's cache holds only 128 across all plugins, and an evicted sprite
+     * comes back blank for a moment, which flickers.
      */
     private final Map<Integer, AsyncBufferedImage> spriteByItemId = new HashMap<>();
 
     /**
-     * The row whose picker is being applied. Set and cleared on the client thread around
-     * selectProduct, which publishes before it returns - so a result seen while this is set is
-     * exactly the one the pick produced, and no bank update can be mistaken for it.
+     * Client thread. Set around selectProduct, which publishes before returning, so a result seen
+     * while it is set is the one the pick produced.
      */
     private Integer pickingOnRootItemId;
 
-    /**
-     * Whether rows switched off are listed. EDT only.
-     */
     private boolean offRowsShown;
-
-    /**
-     * Saves the eye's state when it is clicked, so it is the same next session. Called on the EDT.
-     */
     private final Consumer<Boolean> offRowsShownSaver;
 
     /**
-     * The rows as last arranged, every one including those switched off, so the eye can redraw them
-     * without waiting for a result. EDT only.
+     * Every row including those switched off, so the eye can redraw without waiting for a result.
      */
     private List<Integer> arrangedRootItemIds = List.of();
 
-    /**
-     * The "Recipes" heading, with the eye on its right. Built once, so its hover survives redraws.
-     */
+    // built once, so its hover survives redraws
     private final JPanel recipesHeading;
     private final JLabel eye = new JLabel();
 
-    /**
-     * Whether the panel is open. EDT only.
-     */
     private boolean active;
 
     /**
-     * The latest result to arrive while the panel was closed, drawn when it opens. Only the latest
-     * is kept - a closed panel cannot be picked on, so the results skipped carry no pick for
-     * RowOrder to miss. EDT only.
+     * The latest result to arrive while the panel was closed. Skipping earlier ones loses nothing:
+     * a closed panel cannot be picked on.
      */
     private Runnable pendingRender;
 
     /**
      * @param productRecipesByItem for each item, the recipe making each product it could end at -
-     *                             what a row's menu offers. Fixed by the table, so given once here.
-     * @param icon                 the plugin's icon, for the title
-     * @param openSettings         opens this plugin's settings. Called on the EDT.
-     * @param offRowsShown         whether rows switched off are listed, as saved last session
-     * @param offRowsShownSaver    saves that when the eye is clicked. Called on the EDT.
+     *                             what a row's menu offers
      */
     public HerblorePanel(ItemManager itemManager, ClientThread clientThread, HerbloreApp app,
                          Map<Integer, List<Recipe>> productRecipesByItem, BufferedImage icon,
@@ -177,7 +130,6 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
         noData.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
         noData.setHorizontalAlignment(JLabel.CENTER);
 
-        // the bar takes the label's place once a result arrives
         xpBar.setVisible(false);
         final JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
@@ -208,16 +160,11 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
         add(content, BorderLayout.NORTH);
     }
 
-    /**
-     * The plugin's icon on the left, its name in the middle, and a cog on the right that opens the
-     * settings.
-     */
     private static JPanel titleOf(BufferedImage icon, Runnable openSettings) {
         final JLabel name = new JLabel("Iron Herblore", JLabel.CENTER);
         name.setFont(FontManager.getRunescapeBoldFont());
         name.setForeground(Color.WHITE);
 
-        // a little larger than the cog, which is mostly empty space, keeping the icon's shape
         final JLabel logo = new JLabel(new ImageIcon(ImageUtil.resizeImage(icon, LOGO_SIZE, LOGO_SIZE, true)));
 
         final JLabel settings = new JLabel(new CogIcon(BUTTON));
@@ -245,7 +192,6 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
         logo.setPreferredSize(corner);
         settings.setPreferredSize(corner);
 
-        // a thin line under the title sets it apart from what the panel shows below
         final JPanel title = new JPanel(new BorderLayout());
         title.setOpaque(false);
         title.setBorder(new CompoundBorder(
@@ -262,10 +208,8 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
     public void onResultChanged(HerbloreResult result) {
         final XpBarView xpBarView = XpBarView.of(result.getCurrentXp(), result.getTotalXp());
 
-        // Names resolve here - ItemManager cannot be touched from the EDT
-
-        // Rows worth nothing stay listed - a row stopped at an unf vial still needs its picker.
-        // Kept in the domain's order here; RowOrder decides where they sit.
+        // Names resolve here, on the client thread - ItemManager cannot be touched from the EDT.
+        // Rows worth nothing stay listed: a row stopped at an unf vial still needs its picker.
         final List<RowView> rowViews = result.getChainResults().stream()
                 .map(chain -> rowViewFactory.rowOf(chain,
                         result.getAmuletChainRootItemIds().contains(chain.getRootItemId())))
@@ -317,7 +261,6 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
                 pickedOnRootItemId);
         drawRows(rowByRootItemId);
 
-        // only the potions the bank makes are offered, so with none there is nothing to choose
         amulet.removeAll();
         if (!amuletView.getLines().isEmpty()) {
             final AmuletPanel choices = new AmuletPanel(amuletView, this::setAmuletDoses, this::clearAmuletDoses);
@@ -328,7 +271,6 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
 
         secondaries.removeAll();
         if (!secondaryViews.isEmpty()) {
-            // the lines sit on one block in the rows' shade, the heading above it like the rows'
             final JPanel list = new JPanel(new DynamicGridLayout(0, 1, 0, 1));
             list.setBackground(RowPanel.ROOT_SHADE);
             list.setBorder(new EmptyBorder(3, 0, 3, 0));
@@ -357,8 +299,8 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
     }
 
     /**
-     * Called on the EDT by a row's picker. The app is only ever driven from the client thread, which
-     * is also where it publishes, so the new result comes back through onResultChanged as usual.
+     * The app is only driven from the client thread; the new result comes back through
+     * onResultChanged.
      */
     private void selectProduct(int rootItemId, int productItemId) {
         clientThread.invoke(() -> {
@@ -371,10 +313,6 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
         });
     }
 
-    /**
-     * Called on the EDT by the amulet section. Like a pick, it goes through the client thread and
-     * comes back as a result.
-     */
     private void setAmuletDoses(int recipeId, int dosesPerPotion) {
         clientThread.invoke(() -> app.setAmuletDoses(recipeId, dosesPerPotion));
     }
@@ -383,10 +321,6 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
         clientThread.invoke(() -> app.clearAmuletDoses(recipeId));
     }
 
-    /**
-     * "Alchemist's amulet", with the charges the choices use on the right - shown open or closed, so
-     * what the amulet costs is visible either way. Clicking it shows or hides the choices.
-     */
     private JPanel amuletHeadingOf(AmuletView amuletView, AmuletPanel choices) {
         final JLabel charges = new JLabel(Math.round(amuletView.getCharges()) == 0
                 ? ""
@@ -403,10 +337,6 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
         }, charges, null);
     }
 
-    /**
-     * Lists the rows as last arranged, leaving out those switched off while the eye is shut. A row
-     * whose view has not changed keeps its panel.
-     */
     private void drawRows(Map<Integer, RowView> rowByRootItemId) {
         final Map<Integer, RowPanel> panels = new HashMap<>();
         rows.removeAll();
@@ -430,7 +360,7 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
             }
 
             panels.put(rootItemId, panel);
-            // folded away, the panels are still kept, so opening the section rebuilds nothing
+            // kept even while folded, so opening the section rebuilds nothing
             if (recipesExpanded) rows.add(panel);
         }
 
@@ -438,10 +368,6 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
         panelByRootItemId = panels;
     }
 
-    /**
-     * "Recipes", with an eye on the right that shows or hides rows switched off, and folds the rows
-     * away when clicked anywhere else.
-     */
     private JPanel recipesHeading() {
         updateEye(false);
         eye.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -482,9 +408,8 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
     }
 
     /**
-     * The image in one colour, each pixel keeping its own transparency. The eye's shape is drawn
-     * entirely in transparency, so ImageUtil.fillImage - which makes every visible pixel solid -
-     * turns it into a blob.
+     * Recolours while keeping each pixel's transparency. ImageUtil.fillImage makes every visible
+     * pixel solid, which turns the eye, drawn in transparency, into a blob.
      */
     private static BufferedImage tint(BufferedImage image, Color color) {
         final BufferedImage tinted = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);

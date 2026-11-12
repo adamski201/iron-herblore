@@ -20,34 +20,21 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * Turns results into what the panel shows, every name resolved. Names come from the function it is
- * given - ItemManager in the client, a lookup table in tests - so this runs without a client, like
- * the domain beneath it.
- * <p>
- * Called on the client thread, since that is where ItemManager can resolve names.
+ * Turns results into what the panel shows, every name resolved. Runs on the client thread, where
+ * ItemManager can resolve names; tests pass a map instead.
  */
 final class RowViewFactory {
     static final String MAKE_NOTHING = "Make nothing";
     static final String NEEDED = "Needed";
     static final String HELD = "Held";
 
-    /**
-     * Everything is counted in single doses, so every potion is named as its 1-dose item. The suffix
-     * says nothing the sprite beside it does not. Only taken off potions.
-     */
+    // everything is counted in single doses, so the "(1)" on a potion's name says nothing
     private static final Pattern ONE_DOSE_SUFFIX = Pattern.compile("\\s*\\(1\\)$");
 
-    /**
-     * Recipe tags for the steps on the way to a potion, in the order they happen.
-     */
     private static final List<RecipeTag> STEP_ORDER = List.of(RecipeTag.SEED, RecipeTag.DEGRIME, RecipeTag.UNF);
 
     private final IntFunction<String> nameOf;
 
-    /**
-     * For each item, the recipe making each product it could end at. Depends only on the recipe
-     * table, so it is given once rather than carried on every result.
-     */
     private final Map<Integer, List<Recipe>> productRecipesByItem;
 
     RowViewFactory(IntFunction<String> nameOf, Map<Integer, List<Recipe>> productRecipesByItem) {
@@ -57,15 +44,11 @@ final class RowViewFactory {
         this.productRecipesByItem = productRecipesByItem;
     }
 
-    /**
-     * @param amuletUsed whether the alchemist's amulet is used on any of the chain's recipes
-     */
     RowView rowOf(ChainResult chain, boolean amuletUsed) {
         final int rootItemId = chain.getRootItemId();
         final List<RowView.ProductOption> options = new ArrayList<>();
 
-        // Picking the root as its own product is how the app is told to make nothing - so the
-        // option carries the root, and a row already switched off has it selected
+        // picking the root as its own product is how the app is told to make nothing
         options.add(new RowView.ProductOption(rootItemId, MAKE_NOTHING));
         for (Recipe recipe : inMenuOrder(productRecipesByItem.getOrDefault(rootItemId, List.of()))) {
             final int productItemId = recipe.getOutput().getItemId();
@@ -107,9 +90,7 @@ final class RowViewFactory {
     }
 
     /**
-     * The steps before a potion first, in the order they happen - seed to herb, degrime, unf - then
-     * everything else in the order it unlocks, lowest level first. Ties keep the order the graph
-     * found them in.
+     * The steps before a potion first - seed, degrime, unf - then the rest by level.
      */
     private static List<Recipe> inMenuOrder(List<Recipe> productRecipes) {
         final List<Recipe> ordered = new ArrayList<>(productRecipes);
@@ -119,9 +100,6 @@ final class RowViewFactory {
         return ordered;
     }
 
-    /**
-     * Where a step falls among the steps, with everything that is not one after them all.
-     */
     private static int stepRankOf(Recipe recipe) {
         return isStep(recipe) ? STEP_ORDER.indexOf(recipe.getTag()) : STEP_ORDER.size();
     }
@@ -131,7 +109,7 @@ final class RowViewFactory {
     }
 
     /**
-     * The panel-wide balance: shortfalls first, as negatives, then what is spare.
+     * Shortfalls first, as negatives, then what is spare.
      */
     List<SecondaryView> secondariesOf(SecondaryBalance balance) {
         return balance.getEntries().stream()
@@ -145,7 +123,6 @@ final class RowViewFactory {
         breakdown.add(new RowView.Line(secondary.getQtyDemanded(), NEEDED));
         breakdown.add(new RowView.Line(secondary.getQtyHeld(), HELD));
 
-        // a row is titled with its root item's name, so the line reads as the row
         secondary.getChainContributions().stream()
                 .sorted(Comparator.comparingDouble(SecondaryBalance.ChainContribution::getMakes).reversed())
                 .forEach(chain -> breakdown.add(new RowView.Line(chain.getMakes(), nameOf.apply(chain.getRootItemId()))));
@@ -167,10 +144,6 @@ final class RowViewFactory {
         return new SecondaryView(secondaryItemId, nameOf.apply(secondaryItemId), secondary.net(), breakdown);
     }
 
-    /**
-     * The alchemist's amulet section: each potion the bank makes that it could be used on, named as
-     * its product, with the charges the choices use.
-     */
     AmuletView amuletOf(List<AlchemistAmuletOption> options, double charges) {
         final List<AmuletView.Line> lines = options.stream()
                 .map(option -> new AmuletView.Line(
@@ -184,8 +157,7 @@ final class RowViewFactory {
     }
 
     /**
-     * One row's demand: most needed first, rounded up - a fraction of a secondary still has to be
-     * bought whole.
+     * Rounded up: a fraction of a secondary still means gathering a whole one.
      */
     private List<RowView.Line> secondaryDemandLinesOf(ItemQuantities demand) {
         return demand.asMap().entrySet().stream()

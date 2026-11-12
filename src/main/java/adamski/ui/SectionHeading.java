@@ -14,13 +14,7 @@ import java.awt.event.MouseEvent;
 import java.util.function.Consumer;
 
 /**
- * A section's heading, which folds the section open and shut: its title on the left and, on the
- * right, an arrow saying which it is. Hovering turns the title and arrow orange, so it reads as
- * something to click.
- * <p>
- * Between them it can show an {@code info} component, which folds the section like the rest of the
- * heading (the amulet's charges), and a {@code button}, which keeps its own clicks (the recipes'
- * eye). EDT only.
+ * A heading that folds its section open and shut.
  */
 final class SectionHeading extends JPanel {
     private static final Color TEXT = Color.WHITE;
@@ -34,9 +28,8 @@ final class SectionHeading extends JPanel {
     private boolean expanded;
 
     /**
-     * @param onToggle told whether the section is now open, after the arrow has turned
-     * @param info     shown on the right, folding the section when clicked; may be null
-     * @param button   shown on the right with clicks of its own; may be null
+     * @param info   shown on the right, folding the section when clicked (the amulet's charges); may be null
+     * @param button shown on the right with clicks of its own (the recipes' eye); may be null
      */
     SectionHeading(String text, boolean expanded, Consumer<Boolean> onToggle, JComponent info, JComponent button) {
         super(new BorderLayout());

@@ -8,24 +8,15 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Which family a row belongs to, and where that family sits in the panel. A row fed by ranarr seeds
- * is a ranarr row, listed with the other herbs in level order.
- * <p>
- * Display only - a row of no family here is listed where {@link #THE_REST} sits, which is visibly
- * slightly off at worst and affects no number.
+ * Which family a row belongs to, for ordering only: a row fed by ranarr seeds sits with the ranarr
+ * rows. Herbs by level, then coral, then rows of no family, then caviar.
  */
 final class RowFamilies {
     private static final Map<Integer, Integer> FAMILY_BY_ITEM_ID = new HashMap<>();
 
-    /**
-     * Families in the order the panel lists them: herbs by level, then coral, then every row of no
-     * family, then caviar last.
-     */
     private static final List<Integer> FAMILY_ORDER = new ArrayList<>();
 
-    /**
-     * Stands in the family order for every row of no family. Not an item id.
-     */
+    // stands in for every row of no family; not an item id
     private static final int THE_REST = -1;
 
     static {
@@ -57,16 +48,12 @@ final class RowFamilies {
     private RowFamilies() {
     }
 
-    /**
-     * @return the item that stands for this row's family, or the entry item if it has none
-     */
     private static int familyOf(int entryItemId) {
         return FAMILY_BY_ITEM_ID.getOrDefault(entryItemId, entryItemId);
     }
 
     /**
-     * @return where this row's family is listed, lower first. A row of no family here sits with the
-     * rest, before caviar.
+     * @return where this row's family is listed, lower first
      */
     static int familyRankOf(int entryItemId) {
         final int rank = FAMILY_ORDER.indexOf(familyOf(entryItemId));

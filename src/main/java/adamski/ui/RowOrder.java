@@ -7,26 +7,17 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Where each row sits in the panel, remembered between results so rows do not move about.
- * <p>
- * A row is known by its root item. Rows still there keep their places and rows that are gone are
- * dropped. A new row created by picking a product goes straight after the row it was picked on;
- * any other new row goes to its family's place - herbs by level, then coral, then the rest, then
- * caviar last, earlier stages first within a family.
- * <p>
- * A row whose root moves up as the bank drains - seeds used up, grimy herbs left - is a new row by
- * this measure, but it lands in its family's place, which is where it already was.
+ * Where each row sits, remembered between results so rows do not move about. Rows still there keep
+ * their places. A row created by a pick goes straight after the row picked on; any other new row
+ * goes to its family's place.
  */
 final class RowOrder {
     private List<Integer> rootItemIds = new ArrayList<>();
 
     /**
-     * @param incoming              the root of every row in the new result, in the order the domain
-     *                              gives them - least mature first, which sets the order within a
-     *                              family
-     * @param pickedOnRootItemId    the row whose picker produced this result, or null if something
-     *                              else did
-     * @return the same roots, in the order to show them
+     * @param incoming           every row's root, least mature first as the domain gives them, which
+     *                           sets the order within a family
+     * @param pickedOnRootItemId the row whose pick produced this result, or null
      */
     List<Integer> arrange(List<Integer> incoming, Integer pickedOnRootItemId) {
         final Map<Integer, Integer> incomingIndex = new HashMap<>();
@@ -58,10 +49,8 @@ final class RowOrder {
     }
 
     /**
-     * After the last row that belongs before it. The rows are not wholly in family order - a row
-     * placed by a pick stays straight after the row it was picked on, wherever its own family would
-     * put it - so this scans rather than searching, and from the bottom: a row pinned behind its
-     * picker must not pull a new row up ahead of the families it really follows.
+     * Scans from the bottom rather than searching, because rows placed by a pick break family order,
+     * and must not pull a new row up ahead of the families it really follows.
      */
     private static int placeFor(int rootItemId, List<Integer> arranged, Comparator<Integer> familyOrder) {
         for (int i = arranged.size() - 1; i >= 0; i--) {

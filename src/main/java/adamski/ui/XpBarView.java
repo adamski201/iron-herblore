@@ -4,8 +4,7 @@ import lombok.Value;
 import net.runelite.api.Experience;
 
 /**
- * What the xp bar shows: the level now, the level once everything banked is made, and how far
- * through that banked level the player would be. Virtual levels count, up to 126.
+ * Virtual levels count, up to 126.
  */
 @Value
 class XpBarView {
@@ -13,21 +12,15 @@ class XpBarView {
 
     int bankedLevel;
 
-    /**
-     * The level the fill is heading for - one past the banked level, or the banked level itself at
-     * the last level.
-     */
     int nextLevel;
 
     /**
-     * How far through the banked level towards the next, 0 to 1. Full at the last level.
+     * How far through the banked level towards the next, 0 to 1.
      */
     double progress;
 
     /**
-     * Where the bar starts filling from: how far through the level the player already is, when the
-     * bank gains no level - so the bank's own share shows on top of it. 0 once a level is gained,
-     * since the whole bar is then a level the bank reaches.
+     * How far through the level the player already is when the bank gains no level; otherwise 0.
      */
     double startProgress;
 
@@ -46,9 +39,6 @@ class XpBarView {
                 bankedXp);
     }
 
-    /**
-     * @return whether the bank takes the player up at least one level
-     */
     boolean levelGained() {
         return bankedLevel > currentLevel;
     }

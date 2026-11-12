@@ -49,70 +49,37 @@ import java.util.function.Supplier;
  *   [root]  Root item name           |        |
  *   [icon]  ↳ Product name      xp   | [prod] |
  * </pre>
- * The whole row is one shade. The root's half - its icon and name - folds the xp breakdown open.
- * The product's half - the notch under the name and the icon on the right - opens a menu of what
- * else the row could make. Each half lights up on its own when hovered, which with the notch's
- * caret is what shows they are two things to click. Both icons carry their quantity the way the game draws a stack.
+ * The root's half folds the xp breakdown open; the product's half opens a menu of what else the row
+ * could make. A row set to make nothing shrinks to one dim line, kept because it is the only place to
+ * switch the row back on.
  * <p>
- * A row set to make nothing is switched off, and shrinks to one dim line that blends into the
- * panel - still there, since it is the only place to switch the row back on, but out of the way.
- * The whole line opens the menu.
- * <p>
- * Immutable once built: a row whose view changes is replaced, not updated, so nothing here holds
- * state beyond the one row.
+ * Immutable: a row whose view changes is replaced, not updated.
  */
 class RowPanel extends JPanel {
-    /**
-     * Also the block behind the secondaries section, so it reads as the same kind of thing as a row.
-     */
+    // also behind the secondaries section, so it reads as the same kind of thing as a row
     static final Color ROOT_SHADE = new Color(0x1d1d1d);
-    /**
-     * Hovering either half of a row, or a secondary's line: one shade across the panel, so the
-     * halves of a row read as parts of one thing.
-     */
     static final Color ROOT_HOVER = new Color(0x262626);
 
-    /**
-     * Behind a breakdown - a row's, or a secondary's - a touch darker than the line it folds out
-     * of, so it reads as tucked under it rather than as more of it. Darker, since lighter is what
-     * hovering means.
-     */
+    // behind a breakdown: darker than the line it folds out of, since lighter means hovered
     static final Color DETAIL_SHADE = new Color(0x181818);
 
-    /**
-     * The panel's own background, so a switched-off row all but disappears into it.
-     */
+    // the panel's own background, so a switched-off row all but disappears into it
     private static final Color OFF_SHADE = ColorScheme.DARK_GRAY_COLOR;
     private static final Color OFF_HOVER = ColorScheme.DARKER_GRAY_COLOR;
     private static final Color OFF_TEXT = Color.GRAY;
 
-    /**
-     * An item sprite, as ItemManager draws it, with a little room around it.
-     */
     private static final Dimension ROOT_ICON_CELL = new Dimension(40, 38);
     private static final Dimension PRODUCT_ICON_CELL = new Dimension(46, 38);
 
-    /**
-     * The tallest the product menu grows before it scrolls.
-     */
     private static final int MENU_MAX_HEIGHT = 240;
 
-    /**
-     * Every option is as tall as an item sprite, "Make nothing" included, so the list is even.
-     */
     private static final int MENU_OPTION_HEIGHT = 36;
 
-    /**
-     * "Make nothing" is no item, so it gets a sign in a sprite's room instead.
-     */
     private static final Icon MAKE_NOTHING_ICON = new NoEntryIcon(ColorScheme.PROGRESS_ERROR_COLOR);
 
     /**
-     * @param onToggle          told whether the row is now expanded, so the panel can keep it open
-     *                          across rebuilds
-     * @param onProductSelected given the row's root item and the product picked for it
-     * @param iconOf            an item's plain sprite. Asked on the EDT, so ItemManager queues the
-     *                          drawing for the client thread rather than doing it there and then
+     * @param iconOf an item's plain sprite. Asked on the EDT, so ItemManager queues the drawing for
+     *               the client thread rather than doing it there and then
      */
     RowPanel(RowView row, boolean expanded, Consumer<Boolean> onToggle,
                   BiConsumer<Integer, Integer> onProductSelected, IntFunction<AsyncBufferedImage> iconOf) {
@@ -134,8 +101,7 @@ class RowPanel extends JPanel {
         final JLabel rootIcon = new JLabel();
         rootIcon.setHorizontalAlignment(SwingConstants.CENTER);
         rootIcon.setPreferredSize(ROOT_ICON_CELL);
-        // no quantity on the root: it counts the root item alone, not everything banked on the row,
-        // so it says little - the tooltip and the breakdown list what is held
+        // no quantity on the root: it would count the root item alone, not everything on the row
         setIcon(rootIcon, new StackIcon(iconOf.apply(row.getRootItemId())));
 
         final JLabel rootName = new JLabel(row.getRootItemName());
@@ -177,7 +143,6 @@ class RowPanel extends JPanel {
         setStack(productIcon, iconOf.apply(row.getProductItemId()), row.getOutputQuantity(),
                 PotionDoses.isPotion(row.getProductItemId()));
 
-        // the caret says this opens something
         final JLabel caret = new JLabel(new CaretIcon(ColorScheme.LIGHT_GRAY_COLOR));
         caret.setVerticalAlignment(SwingConstants.BOTTOM);
         caret.setBorder(new EmptyBorder(0, 0, 4, 3));
@@ -239,10 +204,6 @@ class RowPanel extends JPanel {
         add(detail, BorderLayout.CENTER);
     }
 
-    /**
-     * One dim line: the root's name, and a caret to switch the row back on. The quantity is left to
-     * the tooltip - a row that makes nothing has nothing to count.
-     */
     private static JPanel buildSwitchedOff(RowView row, Supplier<JPopupMenu> menu) {
         final JLabel name = smallLabel(row.getRootItemName());
         name.setForeground(OFF_TEXT);
@@ -292,16 +253,14 @@ class RowPanel extends JPanel {
     }
 
     /**
-     * What the row could make instead, as a list that scrolls past {@link #MENU_MAX_HEIGHT} -
-     * a popup menu of its own would grow to fit, and caviar alone has enough options to cover the
-     * panel. The current product is in bold, and picking it again only closes the menu.
+     * A scrolling list in a popup, since a plain popup menu grows to fit, and caviar alone has enough
+     * options to cover the panel.
      */
     private static JPopupMenu buildMenu(RowView row, BiConsumer<Integer, Integer> onProductSelected,
                                         IntFunction<AsyncBufferedImage> iconOf) {
         final List<RowView.ProductOption> options = row.getProductOptions();
         final JList<RowView.ProductOption> list = new JList<>(options.toArray(new RowView.ProductOption[0]));
 
-        // "Make nothing" is the root itself, and is no item to picture
         final List<Icon> icons = new ArrayList<>(options.size());
         for (RowView.ProductOption option : options) {
             if (option.getItemId() == row.getRootItemId()) {
@@ -329,7 +288,6 @@ class RowPanel extends JPanel {
             }
         });
 
-        // as tall as the options need, up to the cap - widened for the scrollbar once it shows
         final JScrollPane scroll = new JScrollPane(list) {
             @Override
             public Dimension getPreferredSize() {
@@ -347,7 +305,6 @@ class RowPanel extends JPanel {
         menu.setLayout(new BorderLayout());
         menu.add(scroll, BorderLayout.CENTER);
 
-        // the highlight follows the mouse, and a click picks
         final MouseAdapter picker = new MouseAdapter() {
             @Override
             public void mouseMoved(MouseEvent e) {
@@ -413,8 +370,7 @@ class RowPanel extends JPanel {
     }
 
     /**
-     * Input, a drawn arrow, output, then the xp. The output is the part cut short when the panel is
-     * narrow, so the input always reads in full.
+     * The output is what gets cut short when the panel is narrow, so the input always reads in full.
      */
     private static JPanel recipeLineOf(RowView.RecipeLine recipe) {
         final JLabel input = smallLabel(recipe.getInputName());
@@ -436,8 +392,7 @@ class RowPanel extends JPanel {
     }
 
     /**
-     * A name on the left and an amount on the right. The name is the part that gets cut short when
-     * the panel is narrow, so the number always shows.
+     * The name is what gets cut short when the panel is narrow, so the amount always shows.
      */
     static JPanel lineOf(String name, String amount, Color amountColor) {
         final JLabel amountLabel = smallLabel(amount);

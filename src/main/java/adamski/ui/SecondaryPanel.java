@@ -13,30 +13,18 @@ import java.awt.event.MouseEvent;
 import java.util.function.Consumer;
 
 /**
- * One secondary in the panel-wide balance: its name and net on one line, which folds open what is
- * needed, what is held, and the precursors counted towards it.
- * <p>
- * Immutable once built, like a row: the panel builds a new one for every result.
+ * One secondary's net, folding open to its breakdown. Rebuilt for every result.
  */
 class SecondaryPanel extends JPanel {
     private static final Color HOVER = RowPanel.ROOT_HOVER;
 
 
-    /**
-     * Room either side of the text, inside the section's block. On the line rather than the block
-     * so the hover reaches the block's edges.
-     */
+    // on the line rather than the block, so the hover reaches the block's edges
     private static final int SIDE_PADDING = 6;
 
-    /**
-     * How much taller a secondary's line is than a plain line, as a fraction of its height.
-     */
+    // taller than a plain line, so it is easier to click
     private static final float EXTRA_HEIGHT = 0.2f;
 
-    /**
-     * @param onToggle told whether the line is now expanded, so the panel can keep it open across
-     *                 results
-     */
     SecondaryPanel(SecondaryView secondary, boolean expanded, Consumer<Boolean> onToggle) {
         setLayout(new BorderLayout());
         setOpaque(false);
@@ -47,7 +35,6 @@ class SecondaryPanel extends JPanel {
         final JPanel summary = RowPanel.lineOf(secondary.getName(), Amounts.abbreviate(secondary.getNet()), netColor);
         summary.setBackground(HOVER);
 
-        // taller than a plain line by EXTRA_HEIGHT, split above and below, so it is easier to click
         final int padding = Math.round(summary.getPreferredSize().height * EXTRA_HEIGHT / 2);
         summary.setBorder(new EmptyBorder(padding, SIDE_PADDING, padding, SIDE_PADDING));
 

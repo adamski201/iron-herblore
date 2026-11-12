@@ -21,9 +21,7 @@ public final class SmallSpriteIcon implements Icon {
         this.sprite = sprite;
     }
 
-    /**
-     * Repaints the component once the sprite has been drawn, since it starts out blank.
-     */
+    // the sprite starts out blank until the client thread draws it
     public void repaintWhenLoaded(Component component) {
         sprite.onLoaded(component::repaint);
     }

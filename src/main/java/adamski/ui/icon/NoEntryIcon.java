@@ -10,8 +10,7 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 
 /**
- * A red circle struck through, for "Make nothing" - centred in a sprite's room so it lines up with
- * the item sprites beside it.
+ * For "Make nothing", sized like an item sprite so it lines up with them.
  */
 public final class NoEntryIcon implements Icon {
     private static final int DIAMETER = 16;

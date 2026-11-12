@@ -10,13 +10,8 @@ import java.awt.Component;
 import java.awt.Graphics;
 
 /**
- * An item sprite with a quantity drawn over its top-left corner, in the game's stack colours - yellow
- * below 100K, white in thousands, green in millions - but shortened like every other amount in the
- * panel, so a 15,510 dose stack reads "16k".
- * <p>
- * ItemManager can draw the quantity itself, but it caches per item <em>and</em> quantity, and draws
- * synchronously when asked on the client thread - every change of quantity meant a fresh model
- * render. This takes the plain sprite, cached once per item, and paints the number on top.
+ * An item sprite with its quantity painted on, in the game's stack colours. ItemManager can draw the
+ * quantity itself, but caches per quantity, so every bank change re-rendered every sprite.
  */
 public final class StackIcon implements Icon {
     static final int WIDTH = 36;
@@ -29,16 +24,12 @@ public final class StackIcon implements Icon {
     private final String quantity;
     private final Color color;
 
-    /**
-     * The sprite alone, with no quantity drawn on it.
-     */
     public StackIcon(AsyncBufferedImage sprite) {
         this(sprite, 0, false);
     }
 
     /**
-     * @param quantity rounded to a whole number; nothing is drawn for less than one
-     * @param doses    whether the stack is a potion's doses, which keep a decimal up to 50k
+     * @param doses whether the stack is a potion's doses, which keep a decimal up to 50k
      */
     public StackIcon(AsyncBufferedImage sprite, double quantity, boolean doses) {
         this.sprite = sprite;
@@ -59,9 +50,7 @@ public final class StackIcon implements Icon {
         }
     }
 
-    /**
-     * Repaints the component once the sprite has been drawn, since it starts out blank.
-     */
+    // the sprite starts out blank until the client thread draws it
     public void repaintWhenLoaded(Component component) {
         sprite.onLoaded(component::repaint);
     }
