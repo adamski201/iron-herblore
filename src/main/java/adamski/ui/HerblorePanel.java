@@ -213,7 +213,7 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
      * settings.
      */
     private static JPanel titleOf(BufferedImage icon, Runnable openSettings) {
-        final JLabel name = new JLabel("Herblore Helper", JLabel.CENTER);
+        final JLabel name = new JLabel("Iron Herblore", JLabel.CENTER);
         name.setFont(FontManager.getRunescapeBoldFont());
         name.setForeground(Color.WHITE);
 

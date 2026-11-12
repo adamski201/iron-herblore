@@ -26,7 +26,7 @@ import java.util.Map;
 @Slf4j
 @Singleton
 public class SelectionPersistence implements SelectionListener, AlchemistAmuletListener {
-    static final String CONFIG_GROUP = "herblore-helper";
+    static final String CONFIG_GROUP = "iron-herblore";
     static final String SELECTION_KEY = "selection";
     static final String AMULET_KEY = "amulet";
 

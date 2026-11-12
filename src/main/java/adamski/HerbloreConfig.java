@@ -11,7 +11,7 @@ import net.runelite.client.config.Units;
 @ConfigGroup(HerbloreConfig.GROUP)
 public interface HerbloreConfig extends net.runelite.client.config.Config
 {
-    String GROUP = "herblore-helper";
+    String GROUP = "iron-herblore";
 
     @ConfigSection(
         name = "Secondaries",

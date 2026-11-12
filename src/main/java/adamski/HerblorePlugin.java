@@ -39,7 +39,7 @@ import java.util.Map;
 import static java.util.Map.entry;
 
 @Slf4j
-@PluginDescriptor(name = "Herblore Helper")
+@PluginDescriptor(name = "Iron Herblore")
 public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
     @Inject
     private ClientToolbar clientToolbar;
@@ -74,7 +74,7 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
                 this::openSettings, config.offRowsShown(),
                 shown -> configManager.setConfiguration(HerbloreConfig.GROUP, HerbloreConfig.OFF_ROWS_SHOWN, shown));
 
-        navButton = NavigationButton.builder().tooltip("Herblore Helper").icon(icon).priority(100).panel(panel).build();
+        navButton = NavigationButton.builder().tooltip("Iron Herblore").icon(icon).priority(100).panel(panel).build();
 
         clientToolbar.addNavigation(navButton);
         app.addResultListener(panel);
