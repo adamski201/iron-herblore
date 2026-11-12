@@ -1,6 +1,7 @@
 package adamski;
 
 import adamski.data.Recipes;
+import adamski.data.SecondaryPrecursors;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
@@ -115,6 +116,19 @@ public interface HerbloreConfig extends net.runelite.client.config.Config
     default boolean countSecondaryPrecursors()
     {
         return true;
+    }
+
+    @ConfigItem(
+        keyName = "lavaShardsPerScale",
+        name = "Lava shards per scale",
+        description = "How many lava shards each lava scale grinds into. It depends on your Herblore level"
+            + " and whether the hard Wilderness diary is done, so set your own average",
+        section = SECONDARIES,
+        position = 2
+    )
+    default double lavaShardsPerScale()
+    {
+        return SecondaryPrecursors.DEFAULT_LAVA_SHARDS_PER_SCALE;
     }
 
     @ConfigItem(

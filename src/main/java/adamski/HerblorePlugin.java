@@ -134,6 +134,7 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
         final HerbloreSettings settings = new HerbloreSettings(
                 config.countSecondariesMadeByRows(),
                 config.countSecondaryPrecursors(),
+                config.lavaShardsPerScale(),
                 config.caviarSuccessRate() / 100.0,
                 seedYields(),
                 config.countSeeds(),

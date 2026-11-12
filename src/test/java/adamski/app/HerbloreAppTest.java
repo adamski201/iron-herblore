@@ -124,7 +124,7 @@ public class HerbloreAppTest {
     public void aSeedYieldSettingReplacesTheDefault() {
         bank(items(ItemID.RANARR_SEED, 2));
 
-        app.applySettings(HerbloreSettings.DEFAULT.withSeedYieldBySeedItemId(Map.of(ItemID.RANARR_SEED, 10.0)));
+        app.applySettings(HerbloreSettings.DEFAULT.withSeedYieldByItemId(Map.of(ItemID.RANARR_SEED, 10.0)));
 
         assertEquals(2 * 10.0 * GRIMY_RANARR_XP, app.getResult().getTotalXp(), DELTA);
     }
@@ -326,7 +326,7 @@ public class HerbloreAppTest {
         bank(items(ItemID.AVANTOE_SEED, 1));
         final double before = app.getResult().getTotalXp();
 
-        app.applySettings(HerbloreSettings.DEFAULT.withSeedYieldBySeedItemId(Map.of(ItemID.RANARR_SEED, 10.0)));
+        app.applySettings(HerbloreSettings.DEFAULT.withSeedYieldByItemId(Map.of(ItemID.RANARR_SEED, 10.0)));
 
         assertEquals(before, app.getResult().getTotalXp(), DELTA);
     }
@@ -756,6 +756,22 @@ public class HerbloreAppTest {
         bank.put(ItemID.BIRD_NEST_SEEDS_JAN2019, 2);
 
         assertEquals(-3.0, brewBalance(bank).getNet().get(ItemID.CRUSHED_BIRD_NEST), DELTA);
+    }
+
+    /**
+     * Antifire into extended antifire takes a lava shard per dose; the scales cover it at whatever
+     * the player says one grinds into.
+     */
+    @Test
+    public void aLavaShardYieldSettingReplacesTheDefault() {
+        final Map<Integer, Integer> bank = items(ItemID._1DOSE1ANTIDRAGON, 40);
+        bank.put(ItemID.LAVA_SCALE, 10);
+        final double atTheDefault = bank(bank).getSecondaryBalance().getNet().get(ItemID.LAVA_SHARD);
+
+        app.applySettings(HerbloreSettings.DEFAULT.withLavaShardsPerScale(6.0));
+
+        final double atSix = app.getResult().getSecondaryBalance().getNet().get(ItemID.LAVA_SHARD);
+        assertEquals(10 * (6.0 - SecondaryPrecursors.DEFAULT_LAVA_SHARDS_PER_SCALE), atSix - atTheDefault, DELTA);
     }
 
     @Test

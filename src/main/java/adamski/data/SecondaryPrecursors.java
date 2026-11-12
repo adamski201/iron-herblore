@@ -8,13 +8,13 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Items ground or crushed into a secondary - no herblore xp, so they are not recipes.
+ * Items converted into a secondary.
  */
 public final class SecondaryPrecursors {
-    /**
-     * Placeholder. The real number depends on Herblore level and the hard Wilderness diary.
-     */
-    private static final double LAVA_SHARDS_PER_SCALE = 4.5;
+    // The real number depends on Herblore level and the hard Wilderness diary.
+    public static final double DEFAULT_LAVA_SHARDS_PER_SCALE = 4.5;
+    
+    public static final int LAVA_SCALE_ITEM_ID = ItemID.LAVA_SCALE;
 
     private static final List<SecondaryPrecursor> PRECURSORS = List.of(
             new SecondaryPrecursor(ItemID.BIRD_NEST_EMPTY, ItemID.CRUSHED_BIRD_NEST, 1),
@@ -35,7 +35,7 @@ public final class SecondaryPrecursors {
             new SecondaryPrecursor(ItemID.NIHIL_SHARD, ItemID.NIHIL_DUST, 1),
             new SecondaryPrecursor(ItemID.DRAGON_BONES_SUPERIOR, ItemID.CRUSHED_DRAGON_BONES, 1),
             new SecondaryPrecursor(ItemID.SILVER_BAR, ItemID.SILVER_DUST, 1),
-            new SecondaryPrecursor(ItemID.LAVA_SCALE, ItemID.LAVA_SHARD, LAVA_SHARDS_PER_SCALE)
+            new SecondaryPrecursor(LAVA_SCALE_ITEM_ID, ItemID.LAVA_SHARD, DEFAULT_LAVA_SHARDS_PER_SCALE)
     );
 
     private static final Set<Integer> PRECURSOR_ITEM_IDS = PRECURSORS.stream()

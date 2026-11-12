@@ -11,6 +11,7 @@ import adamski.domain.result.RecipeModifiers;
 import adamski.data.AlchemistsAmulet;
 import adamski.data.PrescriptionGoggles;
 import adamski.data.Recipes;
+import adamski.data.SecondaryPrecursors;
 import adamski.domain.ItemQuantities;
 import adamski.domain.ItemSource;
 import adamski.domain.Recipe;
@@ -224,7 +225,7 @@ public class HerbloreApp {
                 chainResults,
                 ownedItems,
                 settings.isChainProductsCounted(),
-                settings.isPrecursorsCounted() ? precursors : List.of());
+                settings.isPrecursorsCounted() ? applyPrecursorYieldOverrides(precursors, settings) : List.of());
 
         return new HerbloreResult(ownedItems, store.currentXp(), chainResults, secondaryBalance,
                 settings.isAlchemistsAmuletUsed()
@@ -256,10 +257,24 @@ public class HerbloreApp {
     private static Map<Integer, Double> getYieldsByRecipeId(HerbloreSettings settings) {
         final Map<Integer, Double> overrides = new HashMap<>();
         overrides.put(Recipes.CUT_LEAPING_STURGEON_RECIPE_ID, settings.getCaviarSuccessRate());
-        settings.getSeedYieldBySeedItemId().forEach((seedItemId, yield) ->
+        settings.getSeedYieldByItemId().forEach((seedItemId, yield) ->
                 overrides.put(Recipes.seedRecipeIdOf(seedItemId), yield));
 
         return overrides;
+    }
+
+    private static List<SecondaryPrecursor> applyPrecursorYieldOverrides(List<SecondaryPrecursor> precursors,
+                                                                         HerbloreSettings settings) {
+        final Map<Integer, Double> yieldsByItemId = getYieldsByPrecursorItemId(settings);
+
+        return precursors.stream()
+                .map(precursor -> precursor.withYield(
+                        yieldsByItemId.getOrDefault(precursor.getItemId(), precursor.getYield())))
+                .collect(Collectors.toList());
+    }
+
+    private static Map<Integer, Double> getYieldsByPrecursorItemId(HerbloreSettings settings) {
+        return Map.of(SecondaryPrecursors.LAVA_SCALE_ITEM_ID, settings.getLavaShardsPerScale());
     }
 
     private static ItemQuantities mergeSources(Map<ItemSource, ItemQuantities> snapshot) {

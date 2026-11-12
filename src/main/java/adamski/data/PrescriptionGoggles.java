@@ -16,13 +16,10 @@ public final class PrescriptionGoggles {
     private static final Map<Integer, Set<Integer>> SAVED_ITEMS_BY_RECIPE_ID = new HashMap<>();
 
     static {
-        // coconut milk unfs - the herb is what's added
         saves(32, ItemID.TOADFLAX);
         saves(33, ItemID.IRIT_LEAF);
         saves(34, ItemID.CACTUS_SPINE);
         saves(35, ItemID.NIGHTSHADE);
-
-        // finished potions
         saves(39, ItemID.EYE_OF_NEWT);
         saves(40, ItemID.UNICORN_HORN_DUST);
         saves(41, ItemID.LIMPWURT_ROOT);
@@ -75,14 +72,10 @@ public final class PrescriptionGoggles {
         saves(93, ItemID.LAVA_SHARD);
         saves(94, ItemID.ANCIENT_ESSENCE);
         saves(136, ItemID.CRUSHED_DRAGON_BONES);
-
-        // torstol is added to the supers or the anti-venom, so it is the one saved - both routes to
-        // super combat, so they stay worth the same
         saves(81, ItemID.TORSTOL);
         saves(82, ItemID.TORSTOLVIAL);
         saves(85, ItemID.TORSTOL);
 
-        // r95-r117 caviar mixes - the caviar is what's added
         for (int recipeId = 95; recipeId <= 117; recipeId++) {
             saves(recipeId, ItemID.BRUT_CAVIAR);
         }

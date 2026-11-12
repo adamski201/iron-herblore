@@ -1,5 +1,6 @@
 package adamski.app;
 
+import adamski.data.SecondaryPrecursors;
 import lombok.Value;
 import lombok.With;
 
@@ -8,7 +9,8 @@ import java.util.Map;
 @Value
 @With
 public class HerbloreSettings {
-    public static final HerbloreSettings DEFAULT = new HerbloreSettings(true, true, 1, Map.of(), true, false, false);
+    public static final HerbloreSettings DEFAULT = new HerbloreSettings(true, true,
+            SecondaryPrecursors.DEFAULT_LAVA_SHARDS_PER_SCALE, 1, Map.of(), true, false, false);
 
     /**
      * Whether secondaries made by a recipe chain count towards the secondaries other chains need
@@ -23,15 +25,19 @@ public class HerbloreSettings {
     boolean precursorsCounted;
 
     /**
+     * How many lava shards one lava scale grinds into.
+     */
+    double lavaShardsPerScale;
+
+    /**
      * How often cutting a leaping sturgeon gives caviar, from 0 to 1.
      */
     double caviarSuccessRate;
 
     /**
-     * What each seed or coral frag grows into, keyed by its item id. One left out grows the table's
-     * default.
+     * Yield overrides for harvesting seeds.
      */
-    Map<Integer, Double> seedYieldBySeedItemId;
+    Map<Integer, Double> seedYieldByItemId;
 
     /**
      * Whether held seeds and coral frags are considered in calculations.
