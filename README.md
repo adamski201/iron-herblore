@@ -1,6 +1,8 @@
 # Iron Herblore
 A RuneLite plugin to calculate banked herblore XP and secondary reagent deficits/surpluses for ironmen.
 
+<img width="243" height="955" alt="image" src="https://github.com/user-attachments/assets/0379d545-21a4-44de-9102-477e978bc836" />
+
 ## Features
 
 - **Banked xp** across your bank, potion storage, and seed vault - from seeds and coral frags to finished and upgraded potions.
