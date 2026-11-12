@@ -24,6 +24,10 @@ Click a row's right/bottom side to change the product.
 
 <img width="235" height="256" alt="image" src="https://github.com/user-attachments/assets/86c239a2-3493-45b5-a784-7d02c047e1a2" />
 
+Expand the 'alchemist's amulet' section to configure which potions it is applied to. The 'use alchemist's amulet' setting needs to be enabled first.
+
+<img width="230" height="277" alt="image" src="https://github.com/user-attachments/assets/d02f57f3-0cff-42f2-9ace-b2a3b4553f2e" />
+
 ## FAQ
 
 Why not use the existing Banked Experience plugin?
