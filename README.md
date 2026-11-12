@@ -28,6 +28,10 @@ Expand the 'alchemist's amulet' section to configure which potions it is applied
 
 <img width="230" height="277" alt="image" src="https://github.com/user-attachments/assets/d02f57f3-0cff-42f2-9ace-b2a3b4553f2e" />
 
+Expand a row in the secondaries list to see the stats behind it. With the 'secondary precursors' feature enabled, this shows banked items which can produce the secondary too.
+
+<img width="234" height="77" alt="image" src="https://github.com/user-attachments/assets/bb18f436-7d9b-44ef-bf03-a4255fdb2e77" />
+
 ## FAQ
 
 Why not use the existing Banked Experience plugin?
