@@ -14,6 +14,16 @@ A RuneLite plugin to calculate banked herblore XP and secondary reagent deficits
 - **Fully configurable** - average yields per seed and coral frag, caviar success rate and lava
   shards per scale.
 
+## How to use
+Click a row's left/top side to expand the row, and show a breakdown of XP by item in the chain and recipe.
+The example below shows the contribution of banked kwuarm seeds as well as grimy and clean kwuarm. Intermediates are absorbed into the seed's (or whatever the least mature item you own is) calculation.
+
+<img width="228" height="179" alt="image" src="https://github.com/user-attachments/assets/4cd18966-7e3f-45a5-b762-c71eb06f4878" />
+
+Click a row's right/bottom side to change the product.
+
+<img width="235" height="256" alt="image" src="https://github.com/user-attachments/assets/86c239a2-3493-45b5-a784-7d02c047e1a2" />
+
 ## FAQ
 
 Why not use the existing Banked Experience plugin?
