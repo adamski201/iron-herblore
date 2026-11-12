@@ -9,12 +9,14 @@ import adamski.domain.result.ChainResult;
 import adamski.domain.result.ChainResultCalculator;
 import adamski.domain.result.RecipeModifiers;
 import adamski.data.AlchemistsAmulet;
+import adamski.data.DegrimeMethod;
 import adamski.data.PrescriptionGoggles;
 import adamski.data.Recipes;
 import adamski.data.SecondaryPrecursors;
 import adamski.domain.ItemQuantities;
 import adamski.domain.ItemSource;
 import adamski.domain.Recipe;
+import adamski.domain.RecipeTag;
 import adamski.domain.SecondaryPrecursor;
 import adamski.domain.balance.SecondaryBalanceCalculator;
 import lombok.Getter;
@@ -250,6 +252,10 @@ public class HerbloreApp {
         }
 
         modifiers.add(RecipeModifiers.outputScaling(amuletFactors));
+
+        if (settings.getDegrimeMethod() != DegrimeMethod.MANUAL) {
+            modifiers.add(RecipeModifiers.xpScaling(RecipeTag.DEGRIME, settings.getDegrimeMethod().getXpFactor()));
+        }
 
         return modifiers;
     }

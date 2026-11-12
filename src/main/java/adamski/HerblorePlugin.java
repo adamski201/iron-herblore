@@ -139,7 +139,8 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
                 seedYields(),
                 config.countSeeds(),
                 config.usePrescriptionGoggles(),
-                config.useAlchemistsAmulet());
+                config.useAlchemistsAmulet(),
+                config.degrimeMethod());
 
         clientThread.invoke(() -> app.applySettings(settings));
     }

@@ -1,6 +1,7 @@
 package adamski.domain.result;
 
 import adamski.domain.Recipe;
+import adamski.domain.RecipeTag;
 import adamski.domain.route.RecipeChain;
 
 import java.util.ArrayList;
@@ -61,6 +62,13 @@ public final class RecipeModifiers {
             }
             return scaled;
         };
+    }
+
+    /**
+     * Scales the xp of every recipe with the given tag, leaving its ingredients and output alone.
+     */
+    public static UnaryOperator<Recipe> xpScaling(RecipeTag tag, double factor) {
+        return recipe -> recipe.getTag() == tag ? recipe.withXp((float) (recipe.getXp() * factor)) : recipe;
     }
 
     /**

@@ -1,6 +1,7 @@
 package adamski.app;
 
 import adamski.domain.result.AlchemistAmuletOption;
+import adamski.data.DegrimeMethod;
 import adamski.data.Recipes;
 import adamski.data.SecondaryPrecursors;
 import adamski.domain.ItemQuantities;
@@ -184,6 +185,26 @@ public class HerbloreAppTest {
 
         assertEquals(before.getTotalXp(), app.getResult().getTotalXp(), DELTA);
         assertEquals(9.0, after.getSecondaryDemand().get(ItemID.JANGERBERRIES), DELTA);
+    }
+
+    @Test
+    public void theDegrimeSpellHalvesTheCleaningXp() {
+        bank(items(ItemID.UNIDENTIFIED_RANARR, 1));
+
+        app.applySettings(HerbloreSettings.DEFAULT.withDegrimeMethod(DegrimeMethod.SPELL));
+
+        // r5 degrime is 7.5 of the 82.5, so half of it goes
+        assertEquals(GRIMY_RANARR_XP - 3.75, app.getResult().getTotalXp(), DELTA);
+    }
+
+    @Test
+    public void zahurCleaningGivesNoCleaningXpButKeepsTheRestOfTheChain() {
+        bank(items(ItemID.UNIDENTIFIED_RANARR, 1));
+
+        app.applySettings(HerbloreSettings.DEFAULT.withDegrimeMethod(DegrimeMethod.ZAHUR));
+
+        assertEquals(GRIMY_RANARR_XP - 7.5, app.getResult().getTotalXp(), DELTA);
+        assertEquals(1, app.getResult().getChainResults().size());
     }
 
     /**

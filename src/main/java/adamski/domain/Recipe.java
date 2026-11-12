@@ -40,6 +40,13 @@ public final class Recipe {
     }
 
     /**
+     * @return this recipe earning {@code xp} per run instead
+     */
+    public Recipe withXp(float xp) {
+        return new Recipe(id, primary, secondaries.toArray(new Ingredient[0]), output, tag, xp, level);
+    }
+
+    /**
      * @return this recipe using {@code factor} times as much of one of its ingredients per run -
      * primary or secondary
      * @throws IllegalArgumentException if the recipe does not use the item

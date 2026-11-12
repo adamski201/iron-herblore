@@ -1,5 +1,6 @@
 package adamski;
 
+import adamski.data.DegrimeMethod;
 import adamski.data.Recipes;
 import adamski.data.SecondaryPrecursors;
 import net.runelite.client.config.ConfigGroup;
@@ -75,6 +76,18 @@ public interface HerbloreConfig extends net.runelite.client.config.Config
     default boolean useAlchemistsAmulet()
     {
         return false;
+    }
+
+    @ConfigItem(
+        keyName = "degrimeMethod",
+        name = "Degrime method",
+        description = "How you clean grimy herbs. The Degrime spell gives half the Herblore xp of cleaning by hand,"
+            + " and paying Zahur gives none",
+        position = 2
+    )
+    default DegrimeMethod degrimeMethod()
+    {
+        return DegrimeMethod.MANUAL;
     }
 
     @Range(max = 100)

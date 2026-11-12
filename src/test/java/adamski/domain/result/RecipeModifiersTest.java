@@ -128,6 +128,22 @@ public class RecipeModifiersTest {
         assertSame(MIX, RecipeModifiers.outputScaling(Map.of(99, 1.15)).apply(MIX));
     }
 
+    // --- xp scaling --------------------------------------------------
+
+    @Test
+    public void xpScalingScalesOnlyTheXpOfTaggedRecipes() {
+        final ChainResult result = calculate(RecipeModifiers.xpScaling(RecipeTag.POTION, 0.5), 10);
+
+        assertEquals(50.0, result.getXp(), DELTA);
+        assertEquals(10.0, result.getOutputQuantity(), DELTA);
+        assertEquals(20.0, result.getSecondaryDemand().get(SECONDARY), DELTA);
+    }
+
+    @Test
+    public void xpScalingLeavesOtherTagsAlone() {
+        assertSame(MIX, RecipeModifiers.xpScaling(RecipeTag.DEGRIME, 0).apply(MIX));
+    }
+
     // --- runs ---------------------------------------------------------
 
     @Test

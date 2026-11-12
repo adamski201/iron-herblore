@@ -1,5 +1,6 @@
 package adamski.app;
 
+import adamski.data.DegrimeMethod;
 import adamski.data.SecondaryPrecursors;
 import lombok.Value;
 import lombok.With;
@@ -10,7 +11,7 @@ import java.util.Map;
 @With
 public class HerbloreSettings {
     public static final HerbloreSettings DEFAULT = new HerbloreSettings(true, true,
-            SecondaryPrecursors.DEFAULT_LAVA_SHARDS_PER_SCALE, 1, Map.of(), true, false, false);
+            SecondaryPrecursors.DEFAULT_LAVA_SHARDS_PER_SCALE, 1, Map.of(), true, false, false, DegrimeMethod.MANUAL);
 
     /**
      * Whether secondaries made by a recipe chain count towards the secondaries other chains need
@@ -53,4 +54,9 @@ public class HerbloreSettings {
      * Whether the alchemist's amulet is used.
      */
     boolean alchemistsAmuletUsed;
+
+    /**
+     * How grimy herbs are cleaned, which decides the xp of the cleaning step.
+     */
+    DegrimeMethod degrimeMethod;
 }
