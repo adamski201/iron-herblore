@@ -63,7 +63,7 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
     private final HerbloreApp app;
     private final RowViewFactory rowViewFactory;
 
-    private final JLabel noData = new JLabel("No data yet - open your bank");
+    private final JLabel noData = new JLabel("Open your bank and/or seed vault");
     private final XpBar xpBar = new XpBar();
     private final JPanel rows = new JPanel(new DynamicGridLayout(0, 1, 0, 3));
     private final JPanel secondaries = new JPanel(new DynamicGridLayout(0, 1, 0, 1));
