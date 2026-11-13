@@ -102,7 +102,7 @@ class RowPanel extends JPanel {
         rootIcon.setHorizontalAlignment(SwingConstants.CENTER);
         rootIcon.setPreferredSize(ROOT_ICON_CELL);
         // no quantity on the root: it would count the root item alone, not everything on the row
-        setIcon(rootIcon, new StackIcon(iconOf.apply(row.getRootItemId())));
+        setIcon(rootIcon, new StackIcon(iconOf.apply(row.getRootIconItemId())));
 
         final JLabel rootName = new JLabel(row.getRootItemName());
         rootName.setFont(FontManager.getRunescapeBoldFont());
@@ -140,8 +140,10 @@ class RowPanel extends JPanel {
 
         final JLabel productIcon = new JLabel();
         productIcon.setHorizontalAlignment(SwingConstants.RIGHT);
-        setStack(productIcon, iconOf.apply(row.getProductItemId()), row.getOutputQuantity(),
-                PotionDoses.isPotion(row.getProductItemId()));
+        // a stack of single doses keeps a decimal; a stack of whole potions does not
+        final int productIconItemId = row.getProductIconItemId();
+        setStack(productIcon, iconOf.apply(productIconItemId), row.getOutputQuantity(),
+                PotionDoses.isPotion(productIconItemId) && PotionDoses.doses(productIconItemId) == 1);
 
         final JLabel caret = new JLabel(new CaretIcon(ColorScheme.LIGHT_GRAY_COLOR));
         caret.setVerticalAlignment(SwingConstants.BOTTOM);
@@ -268,7 +270,7 @@ class RowPanel extends JPanel {
                 continue;
             }
 
-            final AsyncBufferedImage image = iconOf.apply(option.getItemId());
+            final AsyncBufferedImage image = iconOf.apply(option.getIconItemId());
             image.onLoaded(list::repaint);
             icons.add(new ImageIcon(image));
         }

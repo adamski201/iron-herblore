@@ -9,6 +9,7 @@ import adamski.domain.SecondaryPrecursor;
 import adamski.infrastructure.RuneLiteAdapter;
 import adamski.infrastructure.SelectionPersistence;
 import adamski.ui.HerblorePanel;
+import adamski.ui.PotionSize;
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.MenuAction;
@@ -143,6 +144,11 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
                 config.degrimeMethod());
 
         clientThread.invoke(() -> app.applySettings(settings));
+
+        // display only settings
+        final HerblorePanel shownOn = panel;
+        final PotionSize potionSize = config.potionSize();
+        clientThread.invoke(() -> shownOn.setPotionSize(potionSize));
     }
 
     private Map<Integer, Double> seedYields() {

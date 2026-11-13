@@ -11,16 +11,23 @@ import java.util.List;
 @Value
 class RowView {
     /**
-     * What a product is picked against - the app needs it back.
+     * What a product is picked against - the app needs it back. Quantities are in the potion size
+     * chosen to show, not doses.
      */
     int rootItemId;
     String rootItemName;
     double rootQuantity;
 
+    /**
+     * The item whose sprite stands for the root - for a potion, the size potions are shown as.
+     */
+    int rootIconItemId;
+
 
     double xp;
 
     int productItemId;
+    int productIconItemId;
 
     boolean switchedOff;
     String productName;
@@ -38,6 +45,7 @@ class RowView {
     @Value
     static class ProductOption {
         int itemId;
+        int iconItemId;
         String name;
     }
 

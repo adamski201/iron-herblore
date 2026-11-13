@@ -55,7 +55,12 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
     private final ItemManager itemManager;
     private final ClientThread clientThread;
     private final HerbloreApp app;
-    private final RowViewFactory rowViewFactory;
+    private final Map<Integer, List<Recipe>> productRecipesByItem;
+
+    // client thread, both: replaced when the potion size changes, which redraws the last result
+    private RowViewFactory rowViewFactory;
+    private HerbloreResult lastResult;
+    private PotionSize potionSize = PotionSize.ONE;
 
     private final JLabel noData = new JLabel("Open your bank and/or seed vault");
     private final XpBar xpBar = new XpBar();
@@ -122,7 +127,8 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
         this.app = app;
         this.offRowsShown = offRowsShown;
         this.offRowsShownSaver = offRowsShownSaver;
-        this.rowViewFactory = new RowViewFactory(this::name, productRecipesByItem);
+        this.productRecipesByItem = productRecipesByItem;
+        this.rowViewFactory = new RowViewFactory(this::name, productRecipesByItem, potionSize.getDoses());
 
         setLayout(new BorderLayout());
 
@@ -204,8 +210,20 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
         return title;
     }
 
+    /**
+     * Client thread. Display only, so the app is not asked to recalculate.
+     */
+    public void setPotionSize(PotionSize potionSize) {
+        if (potionSize == this.potionSize) return;
+
+        this.potionSize = potionSize;
+        rowViewFactory = new RowViewFactory(this::name, productRecipesByItem, potionSize.getDoses());
+        if (lastResult != null) onResultChanged(lastResult);
+    }
+
     @Override
     public void onResultChanged(HerbloreResult result) {
+        lastResult = result;
         final XpBarView xpBarView = XpBarView.of(result.getCurrentXp(), result.getTotalXp());
 
         // Names resolve here, on the client thread - ItemManager cannot be touched from the EDT.

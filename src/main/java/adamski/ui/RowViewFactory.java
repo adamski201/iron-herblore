@@ -15,6 +15,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.DoubleUnaryOperator;
 import java.util.function.IntFunction;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -22,6 +23,10 @@ import java.util.stream.Collectors;
 /**
  * Turns results into what the panel shows, every name resolved. Runs on the client thread, where
  * ItemManager can resolve names; tests pass a map instead.
+ * <p>
+ * Potions are shown in the size chosen, or the largest they come in below it: named, pictured and
+ * counted as that item. The product menu's names and the amulet's lines keep the plain name: an
+ * option counts nothing, and the amulet's sizes are a choice of their own.
  */
 final class RowViewFactory {
     static final String MAKE_NOTHING = "Make nothing";
@@ -33,15 +38,37 @@ final class RowViewFactory {
 
     private static final List<RecipeTag> STEP_ORDER = List.of(RecipeTag.SEED, RecipeTag.DEGRIME, RecipeTag.UNF);
 
-    private final IntFunction<String> nameOf;
+    private final IntFunction<String> plainNameOf;
 
     private final Map<Integer, List<Recipe>> productRecipesByItem;
 
+    private final int dosesPerPotion;
+
     RowViewFactory(IntFunction<String> nameOf, Map<Integer, List<Recipe>> productRecipesByItem) {
-        this.nameOf = itemId -> PotionDoses.isPotion(itemId)
+        this(nameOf, productRecipesByItem, 1);
+    }
+
+    RowViewFactory(IntFunction<String> nameOf, Map<Integer, List<Recipe>> productRecipesByItem, int dosesPerPotion) {
+        this.plainNameOf = itemId -> PotionDoses.isPotion(itemId)
                 ? ONE_DOSE_SUFFIX.matcher(nameOf.apply(itemId)).replaceFirst("")
                 : nameOf.apply(itemId);
         this.productRecipesByItem = productRecipesByItem;
+        this.dosesPerPotion = dosesPerPotion;
+    }
+
+    private int shownItemIdOf(int itemId) {
+        return PotionDoses.largestVariantOf(itemId, dosesPerPotion);
+    }
+
+    private String nameOf(int itemId) {
+        return plainNameOf.apply(shownItemIdOf(itemId));
+    }
+
+    /**
+     * @param doses how much of itemId, in single doses
+     */
+    private double shownQuantityOf(int itemId, double doses) {
+        return doses / PotionDoses.doses(shownItemIdOf(itemId));
     }
 
     RowView rowOf(ChainResult chain, boolean amuletUsed) {
@@ -49,10 +76,12 @@ final class RowViewFactory {
         final List<RowView.ProductOption> options = new ArrayList<>();
 
         // picking the root as its own product is how the app is told to make nothing
-        options.add(new RowView.ProductOption(rootItemId, MAKE_NOTHING));
+        options.add(new RowView.ProductOption(rootItemId, rootItemId, MAKE_NOTHING));
         for (Recipe recipe : inMenuOrder(productRecipesByItem.getOrDefault(rootItemId, List.of()))) {
             final int productItemId = recipe.getOutput().getItemId();
-            options.add(new RowView.ProductOption(productItemId, nameOf.apply(productItemId)));
+            // no size in the menu's names: an option counts nothing, and its sprite shows the size
+            options.add(new RowView.ProductOption(productItemId, shownItemIdOf(productItemId),
+                    plainNameOf.apply(productItemId)));
         }
 
         // a stopped row's root is listed as held, but contributes nothing worth a line
@@ -60,28 +89,31 @@ final class RowViewFactory {
         for (ChainItemXp contribution : chain.getItemContributions()) {
             if (contribution.getXp() != 0) {
                 xpByItem.add(new RowView.Line(contribution.getXp(),
-                        Amounts.abbreviate(contribution.getQuantity()) + " × " + nameOf.apply(contribution.getItemId())));
+                        Amounts.abbreviate(shownQuantityOf(contribution.getItemId(), contribution.getQuantity()))
+                                + " × " + nameOf(contribution.getItemId())));
             }
         }
 
         final List<RowView.RecipeLine> xpByRecipe = new ArrayList<>();
         for (ChainRecipeXp contribution : chain.getRecipeContributions()) {
             xpByRecipe.add(new RowView.RecipeLine(contribution.getXp(),
-                    nameOf.apply(contribution.getRecipe().getPrimary().getItemId()),
-                    nameOf.apply(contribution.getRecipe().getOutput().getItemId())));
+                    nameOf(contribution.getRecipe().getPrimary().getItemId()),
+                    nameOf(contribution.getRecipe().getOutput().getItemId())));
         }
 
         final int productItemId = chain.getProductItemId();
 
         return new RowView(
                 rootItemId,
-                nameOf.apply(rootItemId),
-                chain.getRootQuantity(),
+                nameOf(rootItemId),
+                shownQuantityOf(rootItemId, chain.getRootQuantity()),
+                shownItemIdOf(rootItemId),
                 chain.getXp(),
                 productItemId,
+                shownItemIdOf(productItemId),
                 chain.makesNothing(),
-                chain.makesNothing() ? MAKE_NOTHING : nameOf.apply(productItemId),
-                chain.getOutputQuantity(),
+                chain.makesNothing() ? MAKE_NOTHING : nameOf(productItemId),
+                shownQuantityOf(productItemId, chain.getOutputQuantity()),
                 amuletUsed,
                 options,
                 xpByItem,
@@ -119,36 +151,39 @@ final class RowViewFactory {
     }
 
     private SecondaryView secondaryOf(SecondaryBalance.BalanceEntry secondary) {
+        final int secondaryItemId = secondary.getSecondaryItemId();
+        final DoubleUnaryOperator shown = doses -> shownQuantityOf(secondaryItemId, doses);
+
         final List<RowView.Line> breakdown = new ArrayList<>();
-        breakdown.add(new RowView.Line(secondary.getQtyDemanded(), NEEDED));
-        breakdown.add(new RowView.Line(secondary.getQtyHeld(), HELD));
+        breakdown.add(new RowView.Line(shown.applyAsDouble(secondary.getQtyDemanded()), NEEDED));
+        breakdown.add(new RowView.Line(shown.applyAsDouble(secondary.getQtyHeld()), HELD));
 
         secondary.getChainContributions().stream()
                 .sorted(Comparator.comparingDouble(SecondaryBalance.ChainContribution::getMakes).reversed())
-                .forEach(chain -> breakdown.add(new RowView.Line(chain.getMakes(), nameOf.apply(chain.getRootItemId()))));
+                .forEach(chain -> breakdown.add(new RowView.Line(shown.applyAsDouble(chain.getMakes()),
+                        nameOf(chain.getRootItemId()))));
 
         // every kind of bird nest is called "Bird nest", so precursors are summed by name
         final Map<String, double[]> heldAndMadeByName = new LinkedHashMap<>();
         for (SecondaryBalance.PrecursorContribution precursor : secondary.getPrecursorContributions()) {
-            final double[] heldAndMade = heldAndMadeByName.computeIfAbsent(nameOf.apply(precursor.getPrecursorItemId()), name -> new double[2]);
+            final double[] heldAndMade = heldAndMadeByName.computeIfAbsent(nameOf(precursor.getPrecursorItemId()), name -> new double[2]);
             heldAndMade[0] += precursor.getHeld();
             heldAndMade[1] += precursor.getMakes();
         }
 
         heldAndMadeByName.entrySet().stream()
                 .sorted(Comparator.comparingDouble((Map.Entry<String, double[]> entry) -> entry.getValue()[1]).reversed())
-                .forEach(entry -> breakdown.add(new RowView.Line(entry.getValue()[1],
+                .forEach(entry -> breakdown.add(new RowView.Line(shown.applyAsDouble(entry.getValue()[1]),
                         Amounts.abbreviate(entry.getValue()[0]) + " × " + entry.getKey())));
 
-        final int secondaryItemId = secondary.getSecondaryItemId();
-        return new SecondaryView(secondaryItemId, nameOf.apply(secondaryItemId), secondary.net(), breakdown);
+        return new SecondaryView(secondaryItemId, nameOf(secondaryItemId), shown.applyAsDouble(secondary.net()), breakdown);
     }
 
     AmuletView amuletOf(List<AlchemistAmuletOption> options, double charges) {
         final List<AmuletView.Line> lines = options.stream()
                 .map(option -> new AmuletView.Line(
                         option.getRecipeId(),
-                        nameOf.apply(option.getProductItemId()),
+                        plainNameOf.apply(option.getProductItemId()),
                         option.getDosesPerPotionOptions(),
                         option.getDosesPerPotion()))
                 .collect(Collectors.toList());
@@ -162,7 +197,8 @@ final class RowViewFactory {
     private List<RowView.Line> secondaryDemandLinesOf(ItemQuantities demand) {
         return demand.asMap().entrySet().stream()
                 .sorted(Map.Entry.<Integer, Double>comparingByValue().reversed())
-                .map(entry -> new RowView.Line(Math.ceil(entry.getValue()), nameOf.apply(entry.getKey())))
+                .map(entry -> new RowView.Line(Math.ceil(shownQuantityOf(entry.getKey(), entry.getValue())),
+                        nameOf(entry.getKey())))
                 .collect(Collectors.toList());
     }
 }

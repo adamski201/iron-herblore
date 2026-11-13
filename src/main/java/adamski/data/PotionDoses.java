@@ -8,6 +8,7 @@ import java.util.Map;
 
 public final class PotionDoses {
     private static final Map<Integer, int[]> VARIANTS = new HashMap<>();
+    private static final Map<Integer, Map<Integer, Integer>> ITEM_ID_BY_DOSES_BY_CANONICAL_ID = new HashMap<>();
 
     static {
         put(ItemID.BRUTAL_1DOSE1AGILITY, ItemID.BRUTAL_1DOSE1AGILITY, 1); // Agility mix(1)
@@ -299,11 +300,28 @@ public final class PotionDoses {
         return VARIANTS.containsKey(itemId);
     }
 
+    /**
+     * @return the largest variant of itemId's potion holding at most maxDoses - a mix stops at (2) -
+     * or itemId itself if it is not decantable
+     */
+    public static int largestVariantOf(int itemId, int maxDoses) {
+        final Map<Integer, Integer> itemIdByDoses = ITEM_ID_BY_DOSES_BY_CANONICAL_ID.get(canonicalId(itemId));
+        if (itemIdByDoses == null) return itemId;
+
+        for (int doses = maxDoses; doses > 1; doses--) {
+            final Integer variant = itemIdByDoses.get(doses);
+            if (variant != null) return variant;
+        }
+
+        return canonicalId(itemId);
+    }
+
     public static Map<Integer, int[]> all() {
         return Collections.unmodifiableMap(VARIANTS);
     }
 
     private static void put(int itemId, int canonicalId, int doses) {
         VARIANTS.put(itemId, new int[]{canonicalId, doses});
+        ITEM_ID_BY_DOSES_BY_CANONICAL_ID.computeIfAbsent(canonicalId, id -> new HashMap<>()).put(doses, itemId);
     }
 }

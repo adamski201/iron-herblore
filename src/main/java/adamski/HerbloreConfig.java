@@ -3,6 +3,7 @@ package adamski;
 import adamski.data.DegrimeMethod;
 import adamski.data.Recipes;
 import adamski.data.SecondaryPrecursors;
+import adamski.ui.PotionSize;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
@@ -88,6 +89,17 @@ public interface HerbloreConfig extends net.runelite.client.config.Config
     default DegrimeMethod degrimeMethod()
     {
         return DegrimeMethod.MANUAL;
+    }
+
+    @ConfigItem(
+        keyName = "potionSize",
+        name = "Show potions as",
+        description = "How many doses a potion is shown and counted as in the panel.",
+        position = 3
+    )
+    default PotionSize potionSize()
+    {
+        return PotionSize.ONE;
     }
 
     @Range(max = 100)

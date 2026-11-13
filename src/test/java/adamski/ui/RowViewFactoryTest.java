@@ -31,6 +31,7 @@ public class RowViewFactoryTest {
     private static final int CLEAN = 2;
     // a real potion, since only potions have their "(1)" taken off
     private static final int POTION = ItemID._1DOSE1ATTACK;
+    private static final int FOUR_DOSE_POTION = ItemID._4DOSE1ATTACK;
     private static final int SECONDARY = 9;
     private static final int OTHER_SECONDARY = 8;
     // two kinds of nest, which the game names alike, and a scale - all precursors
@@ -77,7 +78,7 @@ public class RowViewFactoryTest {
     public void makingNothingIsOfferedFirstAsTheRootItself() {
         final List<RowView.ProductOption> options = factory.rowOf(potionRow(), false).getProductOptions();
 
-        assertEquals(new RowView.ProductOption(HERB, RowViewFactory.MAKE_NOTHING), options.get(0));
+        assertEquals(new RowView.ProductOption(HERB, HERB, RowViewFactory.MAKE_NOTHING), options.get(0));
         assertEquals(List.of("Make nothing", "Clean herb", "Potion"), options.stream()
                 .map(RowView.ProductOption::getName)
                 .collect(Collectors.toList()));
@@ -198,6 +199,74 @@ public class RowViewFactoryTest {
                         new RowView.Line(1, "1 × Bird nest")),
                 secondary.getBreakdown());
         assertEquals(-11, secondary.getNet(), DELTA);
+    }
+
+    @Test
+    public void aPotionShownAsFourDosesIsNamedPicturedAndCountedAsOne() {
+        final RowView row = fourDoseFactory().rowOf(potionRow(), false);
+
+        assertEquals("Potion(4)", row.getProductName());
+        assertEquals(FOUR_DOSE_POTION, row.getProductIconItemId());
+        assertEquals(3.5, row.getOutputQuantity(), DELTA);
+        // what is picked is still the 1-dose item the app knows
+        assertEquals(POTION, row.getProductItemId());
+        // the menu shows the size in its sprite, not its name
+        assertEquals(new RowView.ProductOption(POTION, FOUR_DOSE_POTION, "Potion"), row.getProductOptions().get(2));
+    }
+
+    @Test
+    public void somethingThatIsNotAPotionIsShownAsItIs() {
+        final RowView row = fourDoseFactory().rowOf(potionRow(), false);
+
+        assertEquals(HERB, row.getRootIconItemId());
+        assertEquals(10, row.getRootQuantity(), DELTA);
+        assertEquals("Grimy herb", row.getRootItemName());
+    }
+
+    @Test
+    public void heldPotionsAreCountedInTheSizeShown() {
+        final RowView row = fourDoseFactory().rowOf(new ChainResult(HERB, POTION,
+                List.of(new ChainItemXp(POTION, 8, List.of(), 10)), List.of(), 2, ItemQuantities.EMPTY, 10), false);
+
+        assertEquals("2 × Potion(4)", row.getXpByItem().get(0).getName());
+    }
+
+    @Test
+    public void aPotionSecondaryIsBalancedInTheSizeShown() {
+        final SecondaryBalance balance = new SecondaryBalance(List.of(entry(POTION, 20, 8,
+                List.of(new ChainContribution(HERB, 4)), List.of())));
+
+        final SecondaryView secondary = fourDoseFactory().secondariesOf(balance).get(0);
+
+        assertEquals("Potion(4)", secondary.getName());
+        assertEquals(-2, secondary.getNet(), DELTA);
+        assertEquals(List.of(
+                        new RowView.Line(5, RowViewFactory.NEEDED),
+                        new RowView.Line(2, RowViewFactory.HELD),
+                        new RowView.Line(1, "Grimy herb")),
+                secondary.getBreakdown());
+    }
+
+    @Test
+    public void potionDemandIsRoundedUpToWholePotionsOfTheSizeShown() {
+        final ChainResult chain = new ChainResult(HERB, CLEAN, List.of(new ChainItemXp(HERB, 1, List.of(), 1)),
+                List.of(), 1, ItemQuantities.of(Map.of(POTION, 9.0)), 1);
+
+        assertEquals(List.of(new RowView.Line(3, "Potion(4)")), fourDoseFactory().rowOf(chain, false).getSecondaryDemand());
+    }
+
+    @Test
+    public void theAmuletKeepsThePlainPotionName() {
+        final AmuletView amulet = fourDoseFactory().amuletOf(
+                List.of(new AlchemistAmuletOption(MIXING.getId(), POTION, List.of(3, 2, 1), 2)), 0);
+
+        assertEquals("Potion", amulet.getLines().get(0).getName());
+    }
+
+    private static RowViewFactory fourDoseFactory() {
+        final Map<Integer, String> names = new java.util.HashMap<>(NAMES);
+        names.put(FOUR_DOSE_POTION, "Potion(4)");
+        return new RowViewFactory(names::get, Map.of(HERB, List.of(CLEANING, MIXING)), 4);
     }
 
     private static SecondaryBalance.BalanceEntry entry(int secondaryItemId, double demanded, double held,
