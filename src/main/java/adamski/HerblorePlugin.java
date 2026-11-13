@@ -6,32 +6,27 @@ import adamski.data.Recipes;
 import adamski.data.SecondaryPrecursors;
 import adamski.domain.route.RecipeGraph;
 import adamski.domain.SecondaryPrecursor;
+import adamski.infrastructure.HerbloreConfig;
 import adamski.infrastructure.RuneLiteAdapter;
-import adamski.infrastructure.SelectionPersistence;
+import adamski.infrastructure.AppStatePersistence;
 import adamski.ui.HerblorePanel;
-import adamski.ui.PotionSize;
 import com.google.inject.Provides;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.MenuAction;
 import net.runelite.api.gameval.ItemID;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
-import net.runelite.client.events.OverlayMenuClicked;
-import net.runelite.client.game.ItemManager;
+import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
-import net.runelite.client.ui.overlay.Overlay;
-import net.runelite.client.ui.overlay.OverlayMenuEntry;
 import net.runelite.client.util.ImageUtil;
 
 import javax.inject.Inject;
+import javax.inject.Provider;
 import javax.inject.Singleton;
-import java.awt.Dimension;
-import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,11 +36,9 @@ import static java.util.Map.entry;
 
 @Slf4j
 @PluginDescriptor(name = "Iron Herblore")
-public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
+public class HerblorePlugin extends Plugin {
     @Inject
     private ClientToolbar clientToolbar;
-    @Inject
-    private ItemManager itemManager;
     @Inject
     private ClientThread clientThread;
     @Inject
@@ -53,15 +46,13 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
     @Inject
     private RuneLiteAdapter adapter;
     @Inject
-    private SelectionPersistence selectionPersistence;
+    private AppStatePersistence appStatePersistence;
     @Inject
     private HerbloreApp app;
     @Inject
-    private RecipeGraph graph;
-    @Inject
     private HerbloreConfig config;
     @Inject
-    private ConfigManager configManager;
+    private Provider<HerblorePanel> panelProvider;
 
     private final List<Object> subscribers = new ArrayList<>();
 
@@ -71,25 +62,23 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
     @Override
     protected void startUp() throws Exception {
         final BufferedImage icon = ImageUtil.loadImageResource(getClass(), "icon.png");
-        panel = new HerblorePanel(itemManager, clientThread, app, graph.findProductRecipesByItem(), icon,
-                this::openSettings, config.offRowsShown(),
-                shown -> configManager.setConfiguration(HerbloreConfig.GROUP, HerbloreConfig.OFF_ROWS_SHOWN, shown));
+        panel = panelProvider.get();
 
         navButton = NavigationButton.builder().tooltip("Iron Herblore").icon(icon).priority(100).panel(panel).build();
 
         clientToolbar.addNavigation(navButton);
         app.addResultListener(panel);
-        app.addSelectionListener(selectionPersistence);
-        app.addAmuletListener(selectionPersistence);
+        app.addSelectionListener(appStatePersistence);
+        app.addAmuletListener(appStatePersistence);
 
         // already logged in when the plugin is switched on, so no profile change is coming
-        clientThread.invoke(selectionPersistence::load);
+        clientThread.invoke(appStatePersistence::load);
         clientThread.invoke(adapter::readCurrentXp);
         applyConfig();
 
         // LAST!
         subscribers.add(adapter);
-        subscribers.add(selectionPersistence);
+        subscribers.add(appStatePersistence);
         subscribers.forEach(eventBus::register);
     }
 
@@ -99,8 +88,8 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
         subscribers.forEach(eventBus::unregister);
         subscribers.clear();
 
-        app.removeSelectionListener(selectionPersistence);
-        app.removeAmuletListener(selectionPersistence);
+        app.removeSelectionListener(appStatePersistence);
+        app.removeAmuletListener(appStatePersistence);
         app.removeResultListener(panel);
         clientToolbar.removeNavigation(navButton);
         panel = null;
@@ -113,22 +102,6 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
         if (!HerbloreConfig.GROUP.equals(event.getGroup())) return;
 
         applyConfig();
-    }
-
-    private void openSettings() {
-        eventBus.post(new OverlayMenuClicked(
-                new OverlayMenuEntry(MenuAction.RUNELITE_OVERLAY_CONFIG, null, null), new SettingsOverlay(this)));
-    }
-
-    private static final class SettingsOverlay extends Overlay {
-        SettingsOverlay(net.runelite.client.plugins.Plugin plugin) {
-            super(plugin);
-        }
-
-        @Override
-        public Dimension render(Graphics2D graphics) {
-            return null;
-        }
     }
 
     private void applyConfig() {
@@ -146,9 +119,8 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
         clientThread.invoke(() -> app.applySettings(settings));
 
         // display only settings
-        final HerblorePanel shownOn = panel;
-        final PotionSize potionSize = config.potionSize();
-        clientThread.invoke(() -> shownOn.setPotionSize(potionSize));
+        final int dosesPerPotion = config.potionSize().getDoses();
+        clientThread.invoke(() -> this.panel.setDosesPerPotion(dosesPerPotion));
     }
 
     private Map<Integer, Double> seedYields() {
@@ -172,6 +144,9 @@ public class HerblorePlugin extends net.runelite.client.plugins.Plugin {
                 entry(ItemID.CORAL_PILLAR_FRAG, config.pillarCoralYield()),
                 entry(ItemID.CORAL_UMBRAL_FRAG, config.umbralCoralYield()));
     }
+
+    @Provides
+    Plugin providePlugin() {return this;}
 
     @Provides
     HerbloreConfig provideConfig(ConfigManager configManager) {

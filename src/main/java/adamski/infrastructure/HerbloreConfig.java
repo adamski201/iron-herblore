@@ -1,9 +1,8 @@
-package adamski;
+package adamski.infrastructure;
 
 import adamski.data.DegrimeMethod;
 import adamski.data.Recipes;
 import adamski.data.SecondaryPrecursors;
-import adamski.ui.PotionSize;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
@@ -38,22 +37,6 @@ public interface HerbloreConfig extends net.runelite.client.config.Config
         closedByDefault = true
     )
     String CAVIAR = "caviar";
-
-    /**
-     * Whether the panel hides disabled recipe rows (hidden as toggled via panel itself)
-     */
-    String OFF_ROWS_SHOWN = "offRowsShown";
-
-    @ConfigItem(
-        keyName = OFF_ROWS_SHOWN,
-        name = "Show rows switched off",
-        description = "Whether the panel lists rows set to make nothing",
-        hidden = true
-    )
-    default boolean offRowsShown()
-    {
-        return true;
-    }
 
     @ConfigItem(
         keyName = "usePrescriptionGoggles",
@@ -97,9 +80,9 @@ public interface HerbloreConfig extends net.runelite.client.config.Config
         description = "How many doses a potion is shown and counted as in the panel.",
         position = 3
     )
-    default PotionSize potionSize()
+    default PotionSizeSetting potionSize()
     {
-        return PotionSize.ONE;
+        return PotionSizeSetting.ONE;
     }
 
     @Range(max = 100)

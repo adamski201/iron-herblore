@@ -20,13 +20,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Persists the user's panel configuration.
- * Saves on every change; loads on login, on switching account, and when the plugin starts.
+ * Saves apps state, as opposed to the settings in
+ * {@link HerbloreConfig} - in the RuneLite profile of that account. Saves on every change; loads on
+ * login, on switching account, and when the plugin starts.
  */
 @Slf4j
 @Singleton
-public class SelectionPersistence implements SelectionListener, AlchemistAmuletListener {
-    static final String CONFIG_GROUP = "iron-herblore";
+public class AppStatePersistence implements SelectionListener, AlchemistAmuletListener {
+    static final String CONFIG_GROUP = HerbloreConfig.GROUP;
     static final String SELECTION_KEY = "selection";
     static final String AMULET_KEY = "amulet";
 
@@ -39,7 +40,7 @@ public class SelectionPersistence implements SelectionListener, AlchemistAmuletL
     private final HerbloreApp app;
 
     @Inject
-    public SelectionPersistence(ConfigManager configManager, ClientThread clientThread, Gson gson, HerbloreApp app) {
+    public AppStatePersistence(ConfigManager configManager, ClientThread clientThread, Gson gson, HerbloreApp app) {
         this.configManager = configManager;
         this.clientThread = clientThread;
         this.gson = gson;
@@ -75,20 +76,7 @@ public class SelectionPersistence implements SelectionListener, AlchemistAmuletL
     }
 
     Map<Integer, Integer> decodeStoredAmuletConfiguration(String saved) {
-        if (saved == null || saved.isEmpty()) return Map.of();
-
-        try {
-            final Map<Integer, Integer> dosesPerPotionByRecipeId = gson.fromJson(saved, INTEGER_BY_INTEGER);
-            if (dosesPerPotionByRecipeId == null) return Map.of();
-
-            final Map<Integer, Integer> readable = new HashMap<>(dosesPerPotionByRecipeId);
-            readable.values().removeIf(doses -> doses == null);
-
-            return readable;
-        } catch (JsonParseException e) {
-            log.warn("ignoring unreadable saved amulet choices: {}", saved, e);
-            return Map.of();
-        }
+        return decodeIntegerMap(saved, "amulet choices");
     }
 
     @Override
@@ -105,19 +93,30 @@ public class SelectionPersistence implements SelectionListener, AlchemistAmuletL
     }
 
     RecipeSelection decodeStoredRecipeSelection(String saved) {
-        if (saved == null || saved.isEmpty()) return RecipeSelection.ALL_DEFAULT;
+        // an empty map is the defaults
+        return RecipeSelection.of(decodeIntegerMap(saved, "selection"));
+    }
+
+    /**
+     * Reads back a saved integer-to-integer map. Nothing saved, an unreadable save and null entries all
+     * read as missing, never as an error - a bad save must not break the plugin.
+     *
+     * @param what names the save in the warning logged when it cannot be read
+     */
+    private Map<Integer, Integer> decodeIntegerMap(String saved, String what) {
+        if (saved == null || saved.isEmpty()) return Map.of();
 
         try {
-            final Map<Integer, Integer> recipeByItemId = gson.fromJson(saved, INTEGER_BY_INTEGER);
-            if (recipeByItemId == null) return RecipeSelection.ALL_DEFAULT;
+            final Map<Integer, Integer> decoded = gson.fromJson(saved, INTEGER_BY_INTEGER);
+            if (decoded == null) return Map.of();
 
-            final Map<Integer, Integer> readable = new HashMap<>(recipeByItemId);
-            readable.values().removeIf(recipeId -> recipeId == null);
+            final Map<Integer, Integer> readable = new HashMap<>(decoded);
+            readable.values().removeIf(value -> value == null);
 
-            return RecipeSelection.of(readable);
+            return readable;
         } catch (JsonParseException e) {
-            log.warn("ignoring an unreadable saved selection: {}", saved, e);
-            return RecipeSelection.ALL_DEFAULT;
+            log.warn("ignoring unreadable saved {}: {}", what, saved, e);
+            return Map.of();
         }
     }
 }

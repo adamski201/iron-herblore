@@ -11,8 +11,8 @@ import static org.junit.Assert.assertEquals;
 /**
  * The encoding only - saving and loading go through ConfigManager, which needs a running client.
  */
-public class SelectionPersistenceTest {
-    private final SelectionPersistence persistence = new SelectionPersistence(null, null, new Gson(), null);
+public class AppStatePersistenceTest {
+    private final AppStatePersistence persistence = new AppStatePersistence(null, null, new Gson(), null);
 
     @Test
     public void aSelectionSurvivesBeingSaved() {

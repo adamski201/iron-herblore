@@ -3,9 +3,11 @@ package adamski.ui;
 import adamski.app.HerbloreApp;
 import adamski.app.ResultListener;
 import adamski.domain.Recipe;
+import adamski.domain.route.RecipeGraph;
 import adamski.app.HerbloreResult;
 import adamski.ui.icon.CogIcon;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.DynamicGridLayout;
@@ -33,7 +35,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Consumer;
+import javax.inject.Inject;
 import java.util.stream.Collectors;
 
 /**
@@ -41,6 +43,10 @@ import java.util.stream.Collectors;
  */
 public class HerblorePanel extends PluginPanel implements ResultListener {
     private static final int LOGO_SIZE = 20;
+    private static final String ICON = "/adamski/icon.png";
+    
+    static final String CONFIG_GROUP = "iron-herblore";
+    static final String OFF_ROWS_SHOWN = "offRowsShown";
 
     // RuneLite's eye icons (Screen Markers, Loot Tracker; BSD-2), copied in and recoloured to match the cog
     private static final int EYE_SIZE = 14;
@@ -55,12 +61,13 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
     private final ItemManager itemManager;
     private final ClientThread clientThread;
     private final HerbloreApp app;
+    private final ConfigManager configManager;
     private final Map<Integer, List<Recipe>> productRecipesByItem;
 
     // client thread, both: replaced when the potion size changes, which redraws the last result
     private RowViewFactory rowViewFactory;
     private HerbloreResult lastResult;
-    private PotionSize potionSize = PotionSize.ONE;
+    private int dosesPerPotion = 1;
 
     private final JLabel noData = new JLabel("Open your bank and/or seed vault");
     private final XpBar xpBar = new XpBar();
@@ -96,7 +103,6 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
     private Integer pickingOnRootItemId;
 
     private boolean offRowsShown;
-    private final Consumer<Boolean> offRowsShownSaver;
 
     /**
      * Every row including those switched off, so the eye can redraw without waiting for a result.
@@ -116,19 +122,22 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
     private Runnable pendingRender;
 
     /**
-     * @param productRecipesByItem for each item, the recipe making each product it could end at -
-     *                             what a row's menu offers
+     * Built by Guice, a new one every start of the plugin.
      */
-    public HerblorePanel(ItemManager itemManager, ClientThread clientThread, HerbloreApp app,
-                         Map<Integer, List<Recipe>> productRecipesByItem, BufferedImage icon,
-                         Runnable openSettings, boolean offRowsShown, Consumer<Boolean> offRowsShownSaver) {
+    @Inject
+    public HerblorePanel(ItemManager itemManager, ClientThread clientThread, HerbloreApp app, RecipeGraph graph,
+                         ConfigManager configManager, SettingsOpener settingsOpener) {
         this.itemManager = itemManager;
         this.clientThread = clientThread;
         this.app = app;
-        this.offRowsShown = offRowsShown;
-        this.offRowsShownSaver = offRowsShownSaver;
-        this.productRecipesByItem = productRecipesByItem;
-        this.rowViewFactory = new RowViewFactory(this::name, productRecipesByItem, potionSize.getDoses());
+        this.configManager = configManager;
+        // shown unless switched off - unset on a new install
+        this.offRowsShown = !Boolean.FALSE.equals(
+                configManager.getConfiguration(CONFIG_GROUP, OFF_ROWS_SHOWN, Boolean.class));
+        this.productRecipesByItem = graph.findProductRecipesByItem();
+        this.rowViewFactory = new RowViewFactory(this::name, productRecipesByItem, dosesPerPotion);
+
+        final BufferedImage icon = ImageUtil.loadImageResource(HerblorePanel.class, ICON);
 
         setLayout(new BorderLayout());
 
@@ -140,7 +149,7 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
         final JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
         header.setBorder(new EmptyBorder(0, 0, 8, 0));
-        header.add(titleOf(icon, openSettings), BorderLayout.NORTH);
+        header.add(titleOf(icon, settingsOpener::openSettings), BorderLayout.NORTH);
         header.add(noData, BorderLayout.CENTER);
         header.add(xpBar, BorderLayout.SOUTH);
 
@@ -212,12 +221,14 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
 
     /**
      * Client thread. Display only, so the app is not asked to recalculate.
+     *
+     * @param dosesPerPotion the most doses a potion is shown as, 1 to 4
      */
-    public void setPotionSize(PotionSize potionSize) {
-        if (potionSize == this.potionSize) return;
+    public void setDosesPerPotion(int dosesPerPotion) {
+        if (dosesPerPotion == this.dosesPerPotion) return;
 
-        this.potionSize = potionSize;
-        rowViewFactory = new RowViewFactory(this::name, productRecipesByItem, potionSize.getDoses());
+        this.dosesPerPotion = dosesPerPotion;
+        rowViewFactory = new RowViewFactory(this::name, productRecipesByItem, dosesPerPotion);
         if (lastResult != null) onResultChanged(lastResult);
     }
 
@@ -393,7 +404,7 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
             @Override
             public void mouseClicked(MouseEvent e) {
                 offRowsShown = !offRowsShown;
-                offRowsShownSaver.accept(offRowsShown);
+                configManager.setConfiguration(CONFIG_GROUP, OFF_ROWS_SHOWN, offRowsShown);
                 updateEye(true);
                 drawRows(shownRowByRootItemId);
                 revalidate();
