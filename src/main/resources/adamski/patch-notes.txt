@@ -1,0 +1,2 @@
+1.1.0
+Show potions as (1) to (4) doses

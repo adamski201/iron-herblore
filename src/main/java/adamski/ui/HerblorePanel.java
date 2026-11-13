@@ -47,6 +47,11 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
     
     static final String CONFIG_GROUP = "iron-herblore";
     static final String OFF_ROWS_SHOWN = "offRowsShown";
+    /**
+     * The newest version whose patch notes were closed. Per RuneLite profile rather than per account, so
+     * several accounts close them once.
+     */
+    static final String PATCH_NOTES_CLOSED = "patchNotesClosed";
 
     // RuneLite's eye icons (Screen Markers, Loot Tracker; BSD-2), copied in and recoloured to match the cog
     private static final int EYE_SIZE = 14;
@@ -138,6 +143,7 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
         this.rowViewFactory = new RowViewFactory(this::name, productRecipesByItem, dosesPerPotion);
 
         final BufferedImage icon = ImageUtil.loadImageResource(HerblorePanel.class, ICON);
+        final PatchNotes patchNotes = PatchNotes.load();
 
         setLayout(new BorderLayout());
 
@@ -150,8 +156,24 @@ public class HerblorePanel extends PluginPanel implements ResultListener {
         header.setOpaque(false);
         header.setBorder(new EmptyBorder(0, 0, 8, 0));
         header.add(titleOf(icon, settingsOpener::openSettings), BorderLayout.NORTH);
-        header.add(noData, BorderLayout.CENTER);
         header.add(xpBar, BorderLayout.SOUTH);
+
+        final JPanel middle = new JPanel(new BorderLayout());
+        middle.setOpaque(false);
+        middle.add(noData, BorderLayout.CENTER);
+        // unset until the first close, which shows the newest release only
+        final String closed = configManager.getConfiguration(CONFIG_GROUP, PATCH_NOTES_CLOSED);
+        final List<PatchNotes.Release> unseen = patchNotes.releasesSince(closed == null ? "" : closed);
+        if (!unseen.isEmpty()) {
+            // only shown with notes to show, so the newest version is never null here
+            final String newest = patchNotes.latestVersion();
+            middle.add(new PatchNotesPanel(unseen, () -> {
+                configManager.setConfiguration(CONFIG_GROUP, PATCH_NOTES_CLOSED, newest);
+                revalidate();
+                repaint();
+            }), BorderLayout.NORTH);
+        }
+        header.add(middle, BorderLayout.CENTER);
 
         recipesHeading = recipesHeading();
 
